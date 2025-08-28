@@ -28,7 +28,6 @@ export function RequestCard({ request, showActions = false }: RequestCardProps) 
   const { data: availableDevices } = useQuery({
     queryKey: ["/api/devices"],
     select: (devices) => devices?.filter(d => d.status === "available" && d.type === request.deviceType) || [],
-    enabled: showApprovalDialog,
   });
 
   const approveMutation = useMutation({
@@ -122,6 +121,7 @@ export function RequestCard({ request, showActions = false }: RequestCardProps) 
     if (availableDevices && availableDevices.length > 0) {
       setShowApprovalDialog(true);
     } else {
+      // No available devices, approve without assignment
       approveMutation.mutate({ requestId: request.id });
     }
   };
