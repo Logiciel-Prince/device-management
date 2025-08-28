@@ -33,7 +33,7 @@ export async function sendSlackMessage(
     // Handle specific Slack errors gracefully
     if (error.code === 'slack_webapi_platform_error') {
       if (error.data?.error === 'missing_scope') {
-        console.warn('Slack integration needs additional permissions. Please update bot scopes to include chat:write:bot');
+        console.warn('Slack integration needs additional permissions. Please update bot scopes to include: chat:write, chat:write.public, channels:read');
         return undefined; // Don't throw, just log and continue
       }
     }
