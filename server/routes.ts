@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { sendSlackMessage } from "./slack";
-import { insertDeviceSchema, insertRequestSchema, insertDeviceLogSchema, insertDeviceActivitySchema } from "@shared/schema";
+import { insertDeviceSchema, insertRequestSchema, insertDeviceLogSchema, insertDeviceActivitySchema, insertUserSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -19,6 +19,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+
+  // User profile endpoint
+  app.put('/api/users/:id', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.params.id;
+      const currentUser = await storage.getUser(req.user.claims.sub);
+      
+      // Users can only update their own profile
+      if (currentUser?.id !== userId) {
+        return res.status(403).json({ message: "Can only update your own profile" });
+      }
+
+      const updateSchema = insertUserSchema.pick({
+        firstName: true,
+        lastName: true,
+        email: true,
+      });
+
+      const validatedData = updateSchema.parse(req.body);
+      const updatedUser = await storage.updateUser(userId, validatedData);
+      
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      res.json(updatedUser);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid user data", errors: error.errors });
+      }
+      console.error("Error updating user:", error);
+      res.status(500).json({ message: "Failed to update user" });
     }
   });
 

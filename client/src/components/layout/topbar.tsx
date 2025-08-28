@@ -1,8 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Bell, Menu, Search } from "lucide-react";
+import { Bell, Menu, Search, User } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/hooks/useAuth";
+import { useState } from "react";
+import { ProfileModal } from "@/components/profile/profile-modal";
 
 interface TopBarProps {
   title: string;
@@ -11,6 +14,9 @@ interface TopBarProps {
 }
 
 export function TopBar({ title, subtitle, action }: TopBarProps) {
+  const { user } = useAuth();
+  const [showProfile, setShowProfile] = useState(false);
+  
   const { data: requests } = useQuery({
     queryKey: ["/api/requests"],
   });
@@ -46,6 +52,16 @@ export function TopBar({ title, subtitle, action }: TopBarProps) {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
           </div>
           
+          {/* Profile Button */}
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => setShowProfile(true)}
+            data-testid="button-profile"
+          >
+            <User className="w-5 h-5" />
+          </Button>
+          
           {/* Notifications */}
           <Button variant="ghost" size="sm" className="relative" data-testid="button-notifications">
             <Bell className="w-5 h-5" />
@@ -63,6 +79,12 @@ export function TopBar({ title, subtitle, action }: TopBarProps) {
           {action}
         </div>
       </div>
+      
+      <ProfileModal 
+        open={showProfile} 
+        onOpenChange={setShowProfile}
+        user={user}
+      />
     </header>
   );
 }
