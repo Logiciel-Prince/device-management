@@ -120,7 +120,7 @@ export function RequestForm({ open, onOpenChange }: RequestFormProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Available Devices</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <Select onValueChange={field.onChange} defaultValue={field.value || ""}>
                       <FormControl>
                         <SelectTrigger data-testid="select-available-device">
                           <SelectValue placeholder="Select an available device" />
@@ -133,7 +133,7 @@ export function RequestForm({ open, onOpenChange }: RequestFormProps) {
                           </SelectItem>
                         ) : (
                           availableDevices?.map((device: Device) => (
-                            <SelectItem key={device.id} value={device.id}>
+                            <SelectItem key={device.id} value={device.model || device.name}>
                               {device.name} - {device.model}
                             </SelectItem>
                           ))
@@ -156,7 +156,8 @@ export function RequestForm({ open, onOpenChange }: RequestFormProps) {
                     <Textarea 
                       placeholder="Please explain why you need this device..."
                       className="min-h-[100px]"
-                      {...field} 
+                      {...field}
+                      value={field.value || ""}
                       data-testid="textarea-request-reason"
                     />
                   </FormControl>

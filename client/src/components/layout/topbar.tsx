@@ -63,7 +63,16 @@ export function TopBar({ title, subtitle, action }: TopBarProps) {
           </Button>
           
           {/* Notifications */}
-          <Button variant="ghost" size="sm" className="relative" data-testid="button-notifications">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            className="relative" 
+            onClick={() => {
+              // Navigate to requests page to see pending requests
+              window.location.href = '/requests';
+            }}
+            data-testid="button-notifications"
+          >
             <Bell className="w-5 h-5" />
             {pendingCount > 0 && (
               <Badge 
