@@ -7,11 +7,13 @@ import { AddDeviceModal } from "@/components/device/add-device-modal";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function Devices() {
   const [showAddDevice, setShowAddDevice] = useState(false);
   const [statusFilter, setStatusFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
+  const { user } = useAuth();
 
   const { data: devices, isLoading } = useQuery({
     queryKey: ["/api/devices"],
@@ -32,10 +34,12 @@ export default function Devices() {
           title="Device Inventory" 
           subtitle="Manage all devices and their assignments"
           action={
-            <Button onClick={() => setShowAddDevice(true)} data-testid="button-add-device">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Device
-            </Button>
+            user?.role === "admin" ? (
+              <Button onClick={() => setShowAddDevice(true)} data-testid="button-add-device">
+                <Plus className="w-4 h-4 mr-2" />
+                Add Device
+              </Button>
+            ) : undefined
           }
         />
         

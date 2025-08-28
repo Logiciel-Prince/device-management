@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -9,8 +9,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { insertRequestSchema, type InsertRequest } from "@shared/schema";
+import { insertRequestSchema, type InsertRequest, type Device } from "@shared/schema";
 import { z } from "zod";
+import { useState } from "react";
 
 const formSchema = insertRequestSchema.omit({ userId: true });
 
@@ -22,6 +23,7 @@ interface RequestFormProps {
 export function RequestForm({ open, onOpenChange }: RequestFormProps) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [selectedDeviceType, setSelectedDeviceType] = useState("");
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -30,6 +32,12 @@ export function RequestForm({ open, onOpenChange }: RequestFormProps) {
       deviceModel: "",
       reason: "",
     },
+  });
+
+  // Fetch available devices based on selected type
+  const { data: availableDevices } = useQuery({
+    queryKey: ["/api/devices/available", selectedDeviceType],
+    enabled: !!selectedDeviceType,
   });
 
   const mutation = useMutation({
@@ -65,7 +73,7 @@ export function RequestForm({ open, onOpenChange }: RequestFormProps) {
         <DialogHeader>
           <DialogTitle>Request Device</DialogTitle>
           <DialogDescription>
-            Submit a request for a new device. Your request will be reviewed by an administrator.
+            Select an available device to request. Your request will be reviewed by an administrator.
           </DialogDescription>
         </DialogHeader>
         
@@ -77,7 +85,11 @@ export function RequestForm({ open, onOpenChange }: RequestFormProps) {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Device Type</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={(value) => {
+                    field.onChange(value);
+                    setSelectedDeviceType(value);
+                    form.setValue("deviceModel", ""); // Reset device selection when type changes
+                  }} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger data-testid="select-request-device-type">
                         <SelectValue placeholder="Select device type" />
@@ -94,23 +106,38 @@ export function RequestForm({ open, onOpenChange }: RequestFormProps) {
               )}
             />
 
-            <FormField
-              control={form.control}
-              name="deviceModel"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Preferred Model (Optional)</FormLabel>
-                  <FormControl>
-                    <Input 
-                      placeholder="e.g., iPhone 13 Pro, iPad Air" 
-                      {...field} 
-                      data-testid="input-request-device-model"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {selectedDeviceType && (
+              <FormField
+                control={form.control}
+                name="deviceModel"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Available Devices</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-available-device">
+                          <SelectValue placeholder="Select an available device" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {availableDevices?.length === 0 ? (
+                          <SelectItem value="" disabled>
+                            No available devices of this type
+                          </SelectItem>
+                        ) : (
+                          availableDevices?.map((device: Device) => (
+                            <SelectItem key={device.id} value={device.id}>
+                              {device.name} - {device.model}
+                            </SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             <FormField
               control={form.control}

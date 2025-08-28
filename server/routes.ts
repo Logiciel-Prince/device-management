@@ -44,6 +44,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/devices/available", isAuthenticated, async (req, res) => {
+    try {
+      const type = req.query.type as string;
+      const devices = await storage.getAvailableDevices(type);
+      res.json(devices);
+    } catch (error) {
+      console.error("Error fetching available devices:", error);
+      res.status(500).json({ message: "Failed to fetch available devices" });
+    }
+  });
+
   app.get("/api/devices/:id", isAuthenticated, async (req, res) => {
     try {
       const device = await storage.getDevice(req.params.id);
