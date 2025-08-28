@@ -1,15 +1,7 @@
 import { WebClient } from "@slack/web-api";
 
-// Validate required environment variables
-if (!process.env.SLACK_BOT_TOKEN) {
-  throw new Error("SLACK_BOT_TOKEN environment variable must be set");
-}
-
-if (!process.env.SLACK_CHANNEL_ID) {
-  throw new Error("SLACK_CHANNEL_ID environment variable must be set");
-}
-
-const slack = new WebClient(process.env.SLACK_BOT_TOKEN);
+// Initialize Slack client only if credentials are available
+const slack = process.env.SLACK_BOT_TOKEN ? new WebClient(process.env.SLACK_BOT_TOKEN) : null;
 
 /**
  * Sends a structured message to a Slack channel using the Slack Web API
@@ -19,13 +11,20 @@ const slack = new WebClient(process.env.SLACK_BOT_TOKEN);
  * @returns Promise resolving to the sent message's timestamp
  */
 export async function sendSlackMessage(
-  message: Parameters<typeof slack.chat.postMessage>[0]
+  message: Parameters<WebClient['chat']['postMessage']>[0]
 ): Promise<string | undefined> {
+  // Check if Slack is configured
+  if (!slack || !process.env.SLACK_BOT_TOKEN || !process.env.SLACK_CHANNEL_ID) {
+    console.warn('Slack integration not configured. Skipping message send.');
+    return undefined;
+  }
+
   try {
     // Send the message
     const response = await slack.chat.postMessage({
-      ...message,
-      text: message.text || "DeviceFlow notification", // Ensure text is always provided
+      channel: process.env.SLACK_CHANNEL_ID!,
+      text: "DeviceFlow notification", // Default text
+      ...message, // Override with provided message
     });
 
     // Return the timestamp of the sent message
@@ -53,6 +52,12 @@ export async function readSlackHistory(
   channel_id: string,
   messageLimit: number = 100,
 ): Promise<any> {
+  // Check if Slack is configured
+  if (!slack || !process.env.SLACK_BOT_TOKEN) {
+    console.warn('Slack integration not configured. Cannot read message history.');
+    return { messages: [] };
+  }
+
   try {
     // Get messages
     return await slack.conversations.history({
