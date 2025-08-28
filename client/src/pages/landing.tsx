@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Smartphone, Shield, Users, Zap } from "lucide-react";
+import { Smartphone, Shield, Users, Zap, ArrowRight } from "lucide-react";
 
 export default function Landing() {
   return (
@@ -18,13 +18,50 @@ export default function Landing() {
             Streamline your office device management with automated workflows, 
             Slack notifications, and comprehensive monitoring capabilities.
           </p>
-          <Button 
-            size="lg" 
-            onClick={() => window.location.href = "/api/login"}
-            data-testid="button-login"
-          >
-            Get Started
-          </Button>
+          
+          {/* Role Selection */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto mb-8">
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-primary">
+              <CardContent className="p-8 text-center">
+                <Shield className="w-16 h-16 mx-auto text-blue-600 mb-4" />
+                <h3 className="text-2xl font-semibold mb-4">Administrator</h3>
+                <p className="text-muted-foreground mb-6">
+                  Manage devices, monitor usage, approve requests, and control parental settings.
+                </p>
+                <Button 
+                  size="lg" 
+                  className="w-full"
+                  onClick={() => window.location.href = "/admin"}
+                  data-testid="button-admin-access"
+                >
+                  <Shield className="w-4 h-4 mr-2" />
+                  Admin Access
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              </CardContent>
+            </Card>
+            
+            <Card className="hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-green-500">
+              <CardContent className="p-8 text-center">
+                <Users className="w-16 h-16 mx-auto text-green-600 mb-4" />
+                <h3 className="text-2xl font-semibold mb-4">Employee</h3>
+                <p className="text-muted-foreground mb-6">
+                  Request devices, track assignments, and manage your office equipment.
+                </p>
+                <Button 
+                  size="lg" 
+                  variant="outline"
+                  className="w-full border-green-500 text-green-600 hover:bg-green-50"
+                  onClick={() => window.location.href = "/employee"}
+                  data-testid="button-employee-access"
+                >
+                  <Users className="w-4 h-4 mr-2" />
+                  Employee Portal
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
         </div>
 
         {/* Features */}

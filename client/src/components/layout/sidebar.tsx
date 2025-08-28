@@ -37,17 +37,31 @@ export function Sidebar({ className }: SidebarProps) {
   const navigation = [
     {
       name: "Dashboard",
-      href: "/",
+      href: user?.role === "admin" ? "/admin/dashboard" : "/employee/dashboard",
       icon: LayoutDashboard,
-      current: location === "/",
+      current: location === "/admin/dashboard" || location === "/employee/dashboard" || location === "/",
     },
-    {
-      name: "Devices",
-      href: "/devices",
-      icon: Smartphone,
-      current: location === "/devices",
-      badge: stats?.totalDevices,
-    },
+    ...(user?.role === "admin" ? [
+      {
+        name: "Devices",
+        href: "/devices",
+        icon: Smartphone,
+        current: location === "/devices",
+        badge: stats?.totalDevices,
+      },
+      {
+        name: "Users",
+        href: "/users",
+        icon: Users,
+        current: location === "/users",
+      },
+      {
+        name: "Monitoring",
+        href: "/monitoring",
+        icon: Shield,
+        current: location === "/monitoring",
+      },
+    ] : []),
     {
       name: "Requests",
       href: "/requests",
@@ -56,39 +70,9 @@ export function Sidebar({ className }: SidebarProps) {
       badge: pendingCount > 0 ? pendingCount : undefined,
       badgeVariant: "destructive" as const,
     },
-    {
-      name: "Users",
-      href: "/users",
-      icon: Users,
-      current: location === "/users",
-      adminOnly: true,
-    },
-    {
-      name: "Monitoring",
-      href: "/monitoring",
-      icon: Shield,
-      current: location === "/monitoring",
-      adminOnly: true,
-    },
-    {
-      name: "Reports",
-      href: "/reports",
-      icon: BarChart3,
-      current: location === "/reports",
-      adminOnly: true,
-    },
-    {
-      name: "Settings",
-      href: "/settings",
-      icon: Settings,
-      current: location === "/settings",
-      adminOnly: true,
-    },
   ];
 
-  const filteredNavigation = navigation.filter(item => 
-    !item.adminOnly || user?.role === "admin"
-  );
+  const filteredNavigation = navigation;
 
   return (
     <div className={cn("w-64 bg-card border-r border-border flex flex-col", className)}>

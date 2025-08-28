@@ -101,18 +101,64 @@ export async function setupAuth(app: Express) {
   passport.serializeUser((user: Express.User, cb) => cb(null, user));
   passport.deserializeUser((user: Express.User, cb) => cb(null, user));
 
+  // General login endpoint
   app.get("/api/login", (req, res, next) => {
+    const role = req.query.role as string;
+    req.session.intendedRole = role; // Store intended role in session
+    
     passport.authenticate(`replitauth:${req.hostname}`, {
       prompt: "login consent",
       scope: ["openid", "email", "profile", "offline_access"],
     })(req, res, next);
   });
 
-  app.get("/api/callback", (req, res, next) => {
+  // Admin-specific login endpoint
+  app.get("/api/login/admin", (req, res, next) => {
+    req.session.intendedRole = "admin";
+    
     passport.authenticate(`replitauth:${req.hostname}`, {
-      successReturnToOrRedirect: "/",
-      failureRedirect: "/api/login",
+      prompt: "login consent",
+      scope: ["openid", "email", "profile", "offline_access"],
     })(req, res, next);
+  });
+
+  // Employee-specific login endpoint  
+  app.get("/api/login/employee", (req, res, next) => {
+    req.session.intendedRole = "employee";
+    
+    passport.authenticate(`replitauth:${req.hostname}`, {
+      prompt: "login consent", 
+      scope: ["openid", "email", "profile", "offline_access"],
+    })(req, res, next);
+  });
+
+  app.get("/api/callback", async (req, res, next) => {
+    passport.authenticate(`replitauth:${req.hostname}`, {
+      failureRedirect: "/api/login",
+    })(req, res, async () => {
+      try {
+        const user = req.user as any;
+        const userId = user.claims.sub;
+        const userData = await storage.getUser(userId);
+        const intendedRole = req.session.intendedRole;
+        
+        // Role-based redirect logic
+        if (userData?.role === "admin") {
+          res.redirect("/admin/dashboard");
+        } else if (userData?.role === "employee") {
+          res.redirect("/employee/dashboard");
+        } else if (intendedRole === "admin") {
+          // First-time admin user
+          res.redirect("/admin/dashboard");
+        } else {
+          // Default to employee dashboard
+          res.redirect("/employee/dashboard");
+        }
+      } catch (error) {
+        console.error("Error in callback:", error);
+        res.redirect("/");
+      }
+    });
   });
 
   app.get("/api/logout", (req, res) => {
