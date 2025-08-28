@@ -58,20 +58,24 @@ async function upsertUser(
   claims: any,
   intendedRole?: "admin" | "employee"
 ) {
-  // Get existing user to preserve role if already set
+  // Get existing user
   const existingUser = await storage.getUser(claims["sub"]);
   
-  // Determine role: keep existing, use intended, or default to employee
-  // Special case: user ID "46980646" becomes admin
-  let userRole = existingUser?.role;
-  if (!userRole) {
-    if (claims["sub"] === "46980646") {
-      userRole = "admin";
-    } else if (intendedRole) {
-      userRole = intendedRole;
-    } else {
-      userRole = "employee";
-    }
+  // Determine role: use intended role if provided, otherwise preserve existing or default
+  // Special case: user ID "46980646" is always admin
+  let userRole: "admin" | "employee";
+  
+  if (claims["sub"] === "46980646") {
+    userRole = "admin";
+  } else if (intendedRole) {
+    // If an intended role is specified (from admin/employee login), use it
+    userRole = intendedRole;
+  } else if (existingUser?.role) {
+    // Otherwise, preserve existing role
+    userRole = existingUser.role;
+  } else {
+    // Default to employee for new users
+    userRole = "employee";
   }
   
   await storage.upsertUser({
@@ -154,11 +158,39 @@ export async function setupAuth(app: Express) {
     })(req, res, next);
   });
 
-  app.get("/api/callback", (req, res, next) => {
-    passport.authenticate(`replitauth:${req.hostname}`, {
+  app.get("/api/callback", (req: any, res, next) => {
+    // Get the intended role from session
+    const intendedRole = req.session.intendedRole;
+    
+    // Create a specific verify function for this callback with the intended role
+    const callbackVerify = createVerifyFunction(intendedRole);
+    
+    // Create a temporary strategy for this specific callback
+    const tempStrategy = new Strategy(
+      {
+        name: `callback-${req.hostname}`,
+        config,
+        scope: "openid email profile offline_access",
+        callbackURL: `https://${req.hostname}/api/callback`,
+      },
+      callbackVerify,
+    );
+    
+    // Use the temporary strategy for this callback
+    passport.use(tempStrategy);
+    
+    passport.authenticate(`callback-${req.hostname}`, {
       successReturnToOrRedirect: "/",
       failureRedirect: "/api/login",
-    })(req, res, next);
+    })(req, res, (error) => {
+      // Clean up the intended role from session after processing
+      if (req.session) {
+        delete req.session.intendedRole;
+      }
+      if (error) {
+        next(error);
+      }
+    });
   });
 
   app.get("/api/logout", (req, res) => {
