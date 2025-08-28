@@ -120,26 +120,28 @@ export function RequestForm({ open, onOpenChange }: RequestFormProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Available Devices</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value || ""}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-available-device">
-                          <SelectValue placeholder="Select an available device" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {availableDevices?.length === 0 ? (
-                          <SelectItem value="" disabled>
-                            No available devices of this type
-                          </SelectItem>
-                        ) : (
-                          availableDevices?.map((device: Device) => (
+                    {availableDevices?.length === 0 ? (
+                      <div className="p-3 bg-muted rounded-md border">
+                        <p className="text-sm text-muted-foreground">
+                          No available devices of this type. Please contact your administrator or try a different device type.
+                        </p>
+                      </div>
+                    ) : (
+                      <Select onValueChange={field.onChange} defaultValue={field.value || ""}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-available-device">
+                            <SelectValue placeholder="Select an available device" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {availableDevices?.map((device: Device) => (
                             <SelectItem key={device.id} value={device.model || device.name}>
                               {device.name} - {device.model}
                             </SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -177,7 +179,7 @@ export function RequestForm({ open, onOpenChange }: RequestFormProps) {
               </Button>
               <Button 
                 type="submit" 
-                disabled={mutation.isPending}
+                disabled={mutation.isPending || (selectedDeviceType && availableDevices?.length === 0)}
                 data-testid="button-submit-request"
               >
                 {mutation.isPending ? "Submitting..." : "Submit Request"}
