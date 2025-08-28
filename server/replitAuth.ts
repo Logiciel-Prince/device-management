@@ -56,13 +56,31 @@ function updateUserSession(
 
 async function upsertUser(
   claims: any,
+  intendedRole?: "admin" | "employee"
 ) {
+  // Get existing user to preserve role if already set
+  const existingUser = await storage.getUser(claims["sub"]);
+  
+  // Determine role: keep existing, use intended, or default to employee
+  // Special case: user ID "46980646" becomes admin
+  let userRole = existingUser?.role;
+  if (!userRole) {
+    if (claims["sub"] === "46980646") {
+      userRole = "admin";
+    } else if (intendedRole) {
+      userRole = intendedRole;
+    } else {
+      userRole = "employee";
+    }
+  }
+  
   await storage.upsertUser({
     id: claims["sub"],
     email: claims["email"],
     firstName: claims["first_name"],
     lastName: claims["last_name"],
     profileImageUrl: claims["profile_image_url"],
+    role: userRole,
   });
 }
 
@@ -74,15 +92,19 @@ export async function setupAuth(app: Express) {
 
   const config = await getOidcConfig();
 
-  const verify: VerifyFunction = async (
-    tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
-    verified: passport.AuthenticateCallback
-  ) => {
-    const user = {};
-    updateUserSession(user, tokens);
-    await upsertUser(tokens.claims());
-    verified(null, user);
+  const createVerifyFunction = (intendedRole?: "admin" | "employee"): VerifyFunction => {
+    return async (
+      tokens: client.TokenEndpointResponse & client.TokenEndpointResponseHelpers,
+      verified: passport.AuthenticateCallback
+    ) => {
+      const user = {};
+      updateUserSession(user, tokens);
+      await upsertUser(tokens.claims(), intendedRole);
+      verified(null, user);
+    };
   };
+
+  const verify = createVerifyFunction();
 
   for (const domain of process.env
     .REPLIT_DOMAINS!.split(",")) {
@@ -132,33 +154,11 @@ export async function setupAuth(app: Express) {
     })(req, res, next);
   });
 
-  app.get("/api/callback", async (req, res, next) => {
+  app.get("/api/callback", (req, res, next) => {
     passport.authenticate(`replitauth:${req.hostname}`, {
+      successReturnToOrRedirect: "/",
       failureRedirect: "/api/login",
-    })(req, res, async () => {
-      try {
-        const user = req.user as any;
-        const userId = user.claims.sub;
-        const userData = await storage.getUser(userId);
-        const intendedRole = req.session.intendedRole;
-        
-        // Role-based redirect logic
-        if (userData?.role === "admin") {
-          res.redirect("/admin/dashboard");
-        } else if (userData?.role === "employee") {
-          res.redirect("/employee/dashboard");
-        } else if (intendedRole === "admin") {
-          // First-time admin user
-          res.redirect("/admin/dashboard");
-        } else {
-          // Default to employee dashboard
-          res.redirect("/employee/dashboard");
-        }
-      } catch (error) {
-        console.error("Error in callback:", error);
-        res.redirect("/");
-      }
-    });
+    })(req, res, next);
   });
 
   app.get("/api/logout", (req, res) => {

@@ -23,13 +23,23 @@ export async function sendSlackMessage(
 ): Promise<string | undefined> {
   try {
     // Send the message
-    const response = await slack.chat.postMessage(message);
+    const response = await slack.chat.postMessage({
+      ...message,
+      text: message.text || "DeviceFlow notification", // Ensure text is always provided
+    });
 
     // Return the timestamp of the sent message
     return response.ts;
-  } catch (error) {
+  } catch (error: any) {
+    // Handle specific Slack errors gracefully
+    if (error.code === 'slack_webapi_platform_error') {
+      if (error.data?.error === 'missing_scope') {
+        console.warn('Slack integration needs additional permissions. Please update bot scopes to include chat:write:bot');
+        return undefined; // Don't throw, just log and continue
+      }
+    }
     console.error('Error sending Slack message:', error);
-    throw error;
+    return undefined; // Don't throw, just log and continue
   }
 }
 
