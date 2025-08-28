@@ -5,6 +5,9 @@ import { setupAuth, isAuthenticated } from "./replitAuth";
 import { sendSlackMessage } from "./slack";
 import { insertDeviceSchema, insertRequestSchema, insertDeviceLogSchema, insertDeviceActivitySchema, insertUserSchema } from "@shared/schema";
 import { z } from "zod";
+import multer from "multer";
+import { writeFileSync, existsSync, mkdirSync } from "fs";
+import { join } from "path";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -484,6 +487,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching user device activity:", error);
       res.status(500).json({ message: "Failed to fetch user device activity" });
+    }
+  });
+
+  // Configure multer for profile image uploads
+  const storage_multer = multer.memoryStorage();
+  const upload = multer({
+    storage: storage_multer,
+    limits: {
+      fileSize: 5 * 1024 * 1024, // 5MB limit
+    },
+    fileFilter: (req, file, cb) => {
+      if (file.mimetype.startsWith('image/')) {
+        cb(null, true);
+      } else {
+        cb(new Error('Only image files are allowed'));
+      }
+    },
+  });
+
+  // Profile image upload endpoint
+  app.post("/api/users/:id/profile-image", isAuthenticated, upload.single('profileImage'), async (req: any, res) => {
+    try {
+      const user = await storage.getUser(req.user.claims.sub);
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      // Only allow users to update their own profile or admins to update any profile
+      if (user.id !== req.params.id && user.role !== "admin") {
+        return res.status(403).json({ message: "Access denied" });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ message: "No image file provided" });
+      }
+
+      // Create uploads directory if it doesn't exist
+      const uploadsDir = join(process.cwd(), 'uploads', 'profile-images');
+      if (!existsSync(uploadsDir)) {
+        mkdirSync(uploadsDir, { recursive: true });
+      }
+
+      // Generate unique filename
+      const timestamp = Date.now();
+      const filename = `${req.params.id}-${timestamp}.jpg`;
+      const filepath = join(uploadsDir, filename);
+
+      // Save file to disk
+      writeFileSync(filepath, req.file.buffer);
+
+      // Update user profile with image URL
+      const imageUrl = `/uploads/profile-images/${filename}`;
+      const updatedUser = await storage.updateUser(req.params.id, {
+        profileImageUrl: imageUrl,
+      });
+
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      res.json({ 
+        message: "Profile image updated successfully",
+        profileImageUrl: imageUrl 
+      });
+    } catch (error) {
+      console.error("Error uploading profile image:", error);
+      res.status(500).json({ message: "Failed to upload profile image" });
     }
   });
 

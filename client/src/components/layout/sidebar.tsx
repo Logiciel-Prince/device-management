@@ -127,8 +127,8 @@ export function Sidebar({ className }: SidebarProps) {
         <div className="flex items-center gap-3 mb-3">
           <Avatar className="w-10 h-10">
             <AvatarImage src={user?.profileImageUrl} />
-            <AvatarFallback>
-              {user?.firstName?.[0]}{user?.lastName?.[0]}
+            <AvatarFallback className="bg-primary/10">
+              {user?.firstName?.[0]?.toUpperCase()}{user?.lastName?.[0]?.toUpperCase()}
             </AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">

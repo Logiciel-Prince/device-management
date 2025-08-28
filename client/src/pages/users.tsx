@@ -29,7 +29,7 @@ export default function Users() {
            "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300";
   };
 
-  const getInitials = (firstName?: string, lastName?: string) => {
+  const getInitials = (firstName?: string | null, lastName?: string | null) => {
     return `${firstName?.charAt(0) || ''}${lastName?.charAt(0) || ''}`.toUpperCase() || 'U';
   };
 
