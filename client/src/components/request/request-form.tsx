@@ -37,6 +37,13 @@ export function RequestForm({ open, onOpenChange }: RequestFormProps) {
   // Fetch available devices based on selected type
   const { data: availableDevices } = useQuery({
     queryKey: ["/api/devices/available", selectedDeviceType],
+    queryFn: async () => {
+      const response = await fetch(`/api/devices/available?type=${selectedDeviceType}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch available devices');
+      }
+      return response.json();
+    },
     enabled: !!selectedDeviceType,
   });
 

@@ -22,22 +22,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all users (admin only)
+  app.get('/api/users', isAuthenticated, async (req: any, res) => {
+    try {
+      const currentUser = await storage.getUser(req.user.claims.sub);
+      if (!currentUser || currentUser.role !== "admin") {
+        return res.status(403).json({ message: "Admin access required" });
+      }
+
+      const users = await storage.getAllUsers();
+      res.json(users);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
   // User profile endpoint
   app.put('/api/users/:id', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.params.id;
       const currentUser = await storage.getUser(req.user.claims.sub);
       
-      // Users can only update their own profile
-      if (currentUser?.id !== userId) {
-        return res.status(403).json({ message: "Can only update your own profile" });
+      // Users can update their own profile, or admins can update any user
+      if (currentUser?.id !== userId && currentUser?.role !== "admin") {
+        return res.status(403).json({ message: "Can only update your own profile or admin access required" });
       }
 
-      const updateSchema = insertUserSchema.pick({
-        firstName: true,
-        lastName: true,
-        email: true,
-      });
+      let updateSchema;
+      if (currentUser?.role === "admin") {
+        // Admins can update role as well
+        updateSchema = insertUserSchema.pick({
+          firstName: true,
+          lastName: true,
+          email: true,
+          role: true,
+        });
+      } else {
+        // Regular users can only update basic profile info
+        updateSchema = insertUserSchema.pick({
+          firstName: true,
+          lastName: true,
+          email: true,
+        });
+      }
 
       const validatedData = updateSchema.parse(req.body);
       const updatedUser = await storage.updateUser(userId, validatedData);
