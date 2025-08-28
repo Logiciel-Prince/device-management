@@ -229,13 +229,7 @@ export class MemStorage implements IStorage {
 
   async updateDevice(id: string, updates: Partial<Device>): Promise<Device | undefined> {
     const device = this.devices.get(id);
-    if (!device) {
-      console.log(`🚨 DEBUG: Device ${id} not found in storage`);
-      return undefined;
-    }
-
-    console.log(`🔧 DEBUG: Device before update:`, { id: device.id, status: device.status, assignedTo: device.assignedTo });
-    console.log(`🔧 DEBUG: Updates to apply:`, updates);
+    if (!device) return undefined;
 
     const updatedDevice = {
       ...device,
@@ -244,8 +238,6 @@ export class MemStorage implements IStorage {
       lastActivity: new Date(),
     };
     this.devices.set(id, updatedDevice);
-    
-    console.log(`✅ DEBUG: Device after update:`, { id: updatedDevice.id, status: updatedDevice.status, assignedTo: updatedDevice.assignedTo });
     return updatedDevice;
   }
 

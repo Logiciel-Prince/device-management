@@ -235,10 +235,14 @@ export function RequestCard({ request, showActions = false }: RequestCardProps) 
                 Cancel
               </Button>
               <Button
-                onClick={() => approveMutation.mutate({ 
-                  requestId: request.id, 
-                  deviceId: selectedDeviceId || undefined 
-                })}
+                onClick={() => {
+                  // If no device selected but devices are available, auto-assign the first one
+                  const deviceToAssign = selectedDeviceId || (availableDevices?.[0]?.id);
+                  approveMutation.mutate({ 
+                    requestId: request.id, 
+                    deviceId: deviceToAssign 
+                  });
+                }}
                 disabled={approveMutation.isPending}
                 data-testid="button-confirm-approval"
               >
