@@ -162,6 +162,10 @@ export class MemStorage implements IStorage {
       ...userData,
       id: userData.id || randomUUID(),
       role: userData.role || "employee",
+      email: userData.email || null,
+      firstName: userData.firstName || null,
+      lastName: userData.lastName || null,
+      profileImageUrl: userData.profileImageUrl || null,
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -213,6 +217,8 @@ export class MemStorage implements IStorage {
       ...deviceData,
       id: randomUUID(),
       status: deviceData.status || "available",
+      assignedTo: deviceData.assignedTo || null,
+      purchaseDate: deviceData.purchaseDate || null,
       createdAt: new Date(),
       updatedAt: new Date(),
       lastActivity: new Date(),
@@ -223,7 +229,13 @@ export class MemStorage implements IStorage {
 
   async updateDevice(id: string, updates: Partial<Device>): Promise<Device | undefined> {
     const device = this.devices.get(id);
-    if (!device) return undefined;
+    if (!device) {
+      console.log(`🚨 DEBUG: Device ${id} not found in storage`);
+      return undefined;
+    }
+
+    console.log(`🔧 DEBUG: Device before update:`, { id: device.id, status: device.status, assignedTo: device.assignedTo });
+    console.log(`🔧 DEBUG: Updates to apply:`, updates);
 
     const updatedDevice = {
       ...device,
@@ -232,6 +244,8 @@ export class MemStorage implements IStorage {
       lastActivity: new Date(),
     };
     this.devices.set(id, updatedDevice);
+    
+    console.log(`✅ DEBUG: Device after update:`, { id: updatedDevice.id, status: updatedDevice.status, assignedTo: updatedDevice.assignedTo });
     return updatedDevice;
   }
 
@@ -273,6 +287,8 @@ export class MemStorage implements IStorage {
       ...requestData,
       id: randomUUID(),
       status: "pending",
+      deviceModel: requestData.deviceModel || null,
+      reason: requestData.reason || null,
       approvedBy: null,
       approvedAt: null,
       rejectionReason: null,
@@ -312,6 +328,8 @@ export class MemStorage implements IStorage {
     const log: DeviceLog = {
       ...logData,
       id: randomUUID(),
+      userId: logData.userId || null,
+      notes: logData.notes || null,
       createdAt: new Date(),
     };
     this.deviceLogs.set(log.id, log);
@@ -327,6 +345,11 @@ export class MemStorage implements IStorage {
     const activity: DeviceActivity = {
       ...activityData,
       id: randomUUID(),
+      userId: activityData.userId || null,
+      appName: activityData.appName || null,
+      website: activityData.website || null,
+      duration: activityData.duration || null,
+      data: activityData.data || null,
       createdAt: new Date(),
       timestamp: activityData.timestamp || new Date(),
     };
@@ -337,14 +360,14 @@ export class MemStorage implements IStorage {
   async getDeviceActivity(deviceId: string, limit: number = 100): Promise<DeviceActivity[]> {
     return Array.from(this.deviceActivities.values())
       .filter(activity => activity.deviceId === deviceId)
-      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      .sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime())
       .slice(0, limit);
   }
 
   async getUserDeviceActivity(userId: string, limit: number = 100): Promise<DeviceActivity[]> {
     return Array.from(this.deviceActivities.values())
       .filter(activity => activity.userId === userId)
-      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      .sort((a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime())
       .slice(0, limit);
   }
 

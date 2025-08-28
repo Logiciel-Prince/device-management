@@ -299,10 +299,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { deviceId } = req.body;
+      console.log(`🔧 DEBUG: Approving request ${req.params.id} with deviceId:`, deviceId);
+      
       const request = await storage.getRequest(req.params.id);
       if (!request) {
         return res.status(404).json({ message: "Request not found" });
       }
+      
+      console.log(`🔧 DEBUG: Request details:`, { id: request.id, userId: request.userId, deviceType: request.deviceType });
 
       // Update request status
       const updatedRequest = await storage.updateRequest(req.params.id, {
@@ -314,10 +318,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Assign device if provided
       if (deviceId) {
-        await storage.updateDevice(deviceId, {
+        console.log(`🔧 DEBUG: Updating device ${deviceId} to assigned status for user ${request.userId}`);
+        const updatedDevice = await storage.updateDevice(deviceId, {
           status: "assigned",
           assignedTo: request.userId,
         });
+        console.log(`🔧 DEBUG: Device update result:`, updatedDevice);
 
         // Log device assignment
         await storage.createDeviceLog({
@@ -326,6 +332,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           action: "assigned",
           notes: `Device assigned via request ${request.id}`,
         });
+      } else {
+        console.log(`🔧 DEBUG: No deviceId provided for request ${request.id} approval`);
       }
 
       // Send Slack notification
