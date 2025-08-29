@@ -1,9 +1,10 @@
 import dotenv from "dotenv";
 dotenv.config();
 
-import express, { type Request, Response, NextFunction } from "express";
+import express from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { connectMongoDB } from "./config/database";
 import { join } from "path";
 
 const app = express();
@@ -44,15 +45,30 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+    // Connect to MongoDB first
+    await connectMongoDB();
+
+    // Initialize storage after MongoDB connection
+    const { storage } = await import("./storage");
+    if ("initialize" in storage) {
+        await (storage as any).initialize();
+    }
+
     const server = await registerRoutes(app);
 
-    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-        const status = err.status || err.statusCode || 500;
-        const message = err.message || "Internal Server Error";
-
-        res.status(status).json({ message });
-        throw err;
-    });
+    app.use(
+        (
+            err: any,
+            _req: express.Request,
+            res: express.Response,
+            _next: express.NextFunction
+        ) => {
+            const status = err.status || err.statusCode || 500;
+            const message = err.message || "Internal Server Error";
+            res.status(status).json({ message });
+            console.error("Server error:", err);
+        }
+    );
 
     // importantly only setup vite in development and after
     // setting up all the other routes so the catch-all route

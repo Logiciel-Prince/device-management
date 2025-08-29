@@ -1,0 +1,5 @@
+nohup: ignoring input
+[dotenv@17.2.1] injecting env (5) from .env -- tip: 🔐 prevent committing .env to code: https://dotenvx.com/precommit
+Connected to MongoDB
+3:47:55 PM [express] serving on port 5000
+3:50:50 PM [express] GET /api/health 200 in 4ms :: {"status":"ok","timestamp":"2025-08-29T10:20:50.4…

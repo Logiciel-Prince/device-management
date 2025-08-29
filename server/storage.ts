@@ -475,4 +475,6 @@ export class MemStorage implements IStorage {
     }
 }
 
-export const storage = new MemStorage();
+// Use MongoStorage for persistent data
+import { MongoStorage } from "./mongoStorage";
+export const storage = new MongoStorage();

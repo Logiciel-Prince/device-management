@@ -3,16 +3,23 @@ import { Strategy as LocalStrategy } from "passport-local";
 import session from "express-session";
 import type { Express, RequestHandler } from "express";
 import { storage } from "./storage";
+import { AuthService } from "./services/authService";
+import { validateBody } from "./middleware/validation";
+import { z } from "zod";
 
-// Registered users storage (temporary - in production use proper database)
-const REGISTERED_USERS: Array<{
-    id: string;
-    email: string;
-    password: string;
-    firstName: string;
-    lastName: string;
-    role: "admin" | "employee";
-}> = [];
+// Validation schemas
+const signupSchema = z.object({
+    firstName: z.string().min(1, "First name is required"),
+    lastName: z.string().min(1, "Last name is required"),
+    email: z.string().email("Invalid email format"),
+    password: z.string().min(6, "Password must be at least 6 characters long"),
+    role: z.enum(["admin", "employee"]).optional(),
+});
+
+const loginSchema = z.object({
+    email: z.string().email("Invalid email format"),
+    password: z.string().min(1, "Password is required"),
+});
 
 export function getSession() {
     const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
@@ -45,9 +52,9 @@ export async function setupAuth(app: Express) {
             },
             async (email, password, done) => {
                 try {
-                    // Find user in registered users
-                    const user = REGISTERED_USERS.find(
-                        (u) => u.email === email
+                    const user = await AuthService.verifyPassword(
+                        email,
+                        password
                     );
 
                     if (!user) {
@@ -56,20 +63,7 @@ export async function setupAuth(app: Express) {
                         });
                     }
 
-                    // In production, use bcrypt.compare for hashed passwords
-                    if (user.password !== password) {
-                        return done(null, false, {
-                            message: "Invalid email or password",
-                        });
-                    }
-
-                    return done(null, {
-                        id: user.id,
-                        email: user.email,
-                        firstName: user.firstName,
-                        lastName: user.lastName,
-                        role: user.role,
-                    });
+                    return done(null, user);
                 } catch (error) {
                     return done(error);
                 }
@@ -91,39 +85,63 @@ export async function setupAuth(app: Express) {
     });
 
     // Login endpoint
-    app.post("/api/login", passport.authenticate("local"), (req, res) => {
-        res.json({
-            message: "Login successful",
-            user: req.user,
-        });
-    });
+    app.post(
+        "/api/login",
+        validateBody(loginSchema),
+        passport.authenticate("local"),
+        (req, res) => {
+            res.json({
+                message: "Login successful",
+                user: req.user,
+            });
+        }
+    );
+
+    // Change password endpoint
+    app.post(
+        "/api/auth/change-password",
+        isAuthenticated,
+        async (req: any, res) => {
+            try {
+                const { oldPassword, newPassword } = req.body;
+
+                if (!oldPassword || !newPassword) {
+                    return res.status(400).json({
+                        message: "Old password and new password are required",
+                    });
+                }
+
+                if (newPassword.length < 6) {
+                    return res.status(400).json({
+                        message:
+                            "New password must be at least 6 characters long",
+                    });
+                }
+
+                const success = await AuthService.changePassword(
+                    req.user.id,
+                    oldPassword,
+                    newPassword
+                );
+
+                if (!success) {
+                    return res.status(400).json({
+                        message: "Invalid old password",
+                    });
+                }
+
+                res.json({ message: "Password changed successfully" });
+            } catch (error) {
+                console.error("Change password error:", error);
+                res.status(500).json({ message: "Failed to change password" });
+            }
+        }
+    );
 
     // Signup endpoint
-    app.post("/api/signup", async (req, res) => {
+    app.post("/api/signup", validateBody(signupSchema), async (req, res) => {
         try {
             const { firstName, lastName, email, password, role } = req.body;
-
-            // Validate required fields
-            if (!firstName || !lastName || !email || !password) {
-                return res.status(400).json({
-                    message: "All fields are required",
-                });
-            }
-
-            // Validate email format
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            if (!emailRegex.test(email)) {
-                return res.status(400).json({
-                    message: "Invalid email format",
-                });
-            }
-
-            // Validate password length
-            if (password.length < 6) {
-                return res.status(400).json({
-                    message: "Password must be at least 6 characters long",
-                });
-            }
 
             // Check if user already exists
             const existingUser = await storage.getUserByEmail(email);
@@ -133,31 +151,12 @@ export async function setupAuth(app: Express) {
                 });
             }
 
-            // Generate unique ID
-            const userId = `user-${Date.now()}-${Math.random()
-                .toString(36)
-                .substring(2, 11)}`;
-
-            // Hash password (in production, use bcrypt)
-            // For now, we'll store plain text but in production use:
-            // const hashedPassword = await bcrypt.hash(password, 10);
-
-            // Create user in database
-            const newUser = await storage.upsertUser({
-                id: userId,
+            // Create user with hashed password
+            const newUser = await AuthService.createUser({
                 email,
                 firstName,
                 lastName,
-                role: role || "employee",
-            });
-
-            // Add to registered users array for login (temporary solution)
-            REGISTERED_USERS.push({
-                id: userId,
-                email,
-                password, // In production, store hashed password
-                firstName,
-                lastName,
+                password,
                 role: role || "employee",
             });
 

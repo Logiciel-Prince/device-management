@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
+import { type DeviceWithUser } from "@shared/schema";
 
 export default function Devices() {
   const [showAddDevice, setShowAddDevice] = useState(false);
@@ -15,15 +16,17 @@ export default function Devices() {
   const [typeFilter, setTypeFilter] = useState("all");
   const { user } = useAuth();
 
-  const { data: devices, isLoading } = useQuery({
-    queryKey: ["/api/devices"],
+  const { data: devices, isLoading } = useQuery<DeviceWithUser[]>({
+      queryKey: ["/api/devices"],
   });
 
-  const filteredDevices = devices?.filter(device => {
-    const statusMatch = statusFilter === "all" || device.status === statusFilter;
-    const typeMatch = typeFilter === "all" || device.type === typeFilter;
-    return statusMatch && typeMatch;
-  }) || [];
+  const filteredDevices =
+      devices?.filter((device: DeviceWithUser) => {
+          const statusMatch =
+              statusFilter === "all" || device.status === statusFilter;
+          const typeMatch = typeFilter === "all" || device.type === typeFilter;
+          return statusMatch && typeMatch;
+      }) || [];
 
   return (
     <div className="flex h-screen bg-background">
