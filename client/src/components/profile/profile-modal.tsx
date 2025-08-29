@@ -146,8 +146,23 @@ export function ProfileModal({ open, onOpenChange, user }: ProfileModalProps) {
     mutation.mutate(data);
   };
 
-  const handleLogout = () => {
-    window.location.href = "/api/logout";
+  const handleLogout = async () => {
+      try {
+          // Clear React Query cache first
+          queryClient.clear();
+
+          // Then make logout request
+          await fetch("/api/logout", {
+              method: "POST",
+              credentials: "include",
+          });
+
+          // Redirect to login page
+          window.location.href = "/login";
+      } catch (error) {
+          // Fallback to GET request
+          window.location.href = "/api/logout";
+      }
   };
 
   return (

@@ -122,15 +122,36 @@ export async function setupAuth(app: Express) {
         res.json(req.user);
     });
 
-    // Logout endpoint
-    app.post("/api/logout", (req, res) => {
-        req.logout((err) => {
+    // Logout endpoint - support both GET and POST
+    const logoutHandler = (req: any, res: any) => {
+        req.logout((err: any) => {
             if (err) {
+                console.error("Logout error:", err);
                 return res.status(500).json({ message: "Logout failed" });
             }
-            res.json({ message: "Logout successful" });
+
+            // Clear session
+            req.session.destroy((sessionErr: any) => {
+                if (sessionErr) {
+                    console.error("Session destruction error:", sessionErr);
+                }
+
+                // Clear all cookies
+                res.clearCookie("connect.sid", { path: "/" });
+                res.clearCookie("connect.sid");
+
+                // For GET requests (from frontend links), redirect to login
+                if (req.method === "GET") {
+                    return res.redirect("/login");
+                }
+                // For POST requests (from API calls), return JSON
+                res.json({ message: "Logout successful" });
+            });
         });
-    });
+    };
+
+    app.get("/api/logout", logoutHandler);
+    app.post("/api/logout", logoutHandler);
 
     // Demo users endpoint (for development)
     app.get("/api/demo-users", (req, res) => {
