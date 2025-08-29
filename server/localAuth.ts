@@ -1,0 +1,153 @@
+import passport from "passport";
+import { Strategy as LocalStrategy } from "passport-local";
+import session from "express-session";
+import type { Express, RequestHandler } from "express";
+import connectPg from "connect-pg-simple";
+import { storage } from "./storage";
+import bcrypt from "bcrypt";
+
+// Simple user credentials for demo (in production, use proper user management)
+const DEMO_USERS = [
+    {
+        id: "admin-1",
+        email: "admin@company.com",
+        password: "admin123", // In production, this should be hashed
+        firstName: "Admin",
+        lastName: "User",
+        role: "admin" as const,
+    },
+    {
+        id: "employee-1",
+        email: "employee@company.com",
+        password: "employee123", // In production, this should be hashed
+        firstName: "Employee",
+        lastName: "User",
+        role: "employee" as const,
+    },
+];
+
+export function getSession() {
+    const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
+
+    // Use memory store for local development (in production, use proper session store)
+    return session({
+        secret: process.env.SESSION_SECRET || "local-dev-session-secret",
+        resave: false,
+        saveUninitialized: false,
+        cookie: {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === "production",
+            maxAge: sessionTtl,
+        },
+    });
+}
+
+export async function setupAuth(app: Express) {
+    app.set("trust proxy", 1);
+    app.use(getSession());
+    app.use(passport.initialize());
+    app.use(passport.session());
+
+    // Local strategy for username/password authentication
+    passport.use(
+        new LocalStrategy(
+            {
+                usernameField: "email",
+                passwordField: "password",
+            },
+            async (email, password, done) => {
+                try {
+                    // Find user in demo users
+                    const user = DEMO_USERS.find((u) => u.email === email);
+
+                    if (!user) {
+                        return done(null, false, {
+                            message: "Invalid email or password",
+                        });
+                    }
+
+                    // In production, use bcrypt.compare for hashed passwords
+                    if (user.password !== password) {
+                        return done(null, false, {
+                            message: "Invalid email or password",
+                        });
+                    }
+
+                    // Upsert user in database
+                    await storage.upsertUser({
+                        id: user.id,
+                        email: user.email,
+                        firstName: user.firstName,
+                        lastName: user.lastName,
+                        role: user.role,
+                    });
+
+                    return done(null, {
+                        id: user.id,
+                        email: user.email,
+                        firstName: user.firstName,
+                        lastName: user.lastName,
+                        role: user.role,
+                    });
+                } catch (error) {
+                    return done(error);
+                }
+            }
+        )
+    );
+
+    passport.serializeUser((user: any, done) => {
+        done(null, user.id);
+    });
+
+    passport.deserializeUser(async (id: string, done) => {
+        try {
+            const user = await storage.getUser(id);
+            done(null, user);
+        } catch (error) {
+            done(error);
+        }
+    });
+
+    // Login endpoint
+    app.post("/api/login", passport.authenticate("local"), (req, res) => {
+        res.json({
+            message: "Login successful",
+            user: req.user,
+        });
+    });
+
+    // Get current user
+    app.get("/api/auth/user", isAuthenticated, (req, res) => {
+        res.json(req.user);
+    });
+
+    // Logout endpoint
+    app.post("/api/logout", (req, res) => {
+        req.logout((err) => {
+            if (err) {
+                return res.status(500).json({ message: "Logout failed" });
+            }
+            res.json({ message: "Logout successful" });
+        });
+    });
+
+    // Demo users endpoint (for development)
+    app.get("/api/demo-users", (req, res) => {
+        res.json(
+            DEMO_USERS.map((u) => ({
+                email: u.email,
+                password: u.password,
+                role: u.role,
+                name: `${u.firstName} ${u.lastName}`,
+            }))
+        );
+    });
+}
+
+export const isAuthenticated: RequestHandler = (req, res, next) => {
+    if (req.isAuthenticated()) {
+        return next();
+    }
+    res.status(401).json({ message: "Unauthorized" });
+};
