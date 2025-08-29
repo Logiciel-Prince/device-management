@@ -61,6 +61,14 @@ export default function Signup() {
         setIsLoading(true);
 
         try {
+            console.log("Sending signup request with data:", {
+                firstName: formData.firstName,
+                lastName: formData.lastName,
+                email: formData.email,
+                password: formData.password,
+                role: formData.role,
+            });
+
             const response = await fetch("/api/signup", {
                 method: "POST",
                 headers: {
@@ -75,21 +83,53 @@ export default function Signup() {
                 }),
             });
 
+            console.log("Signup response status:", response.status);
+            console.log("Signup response headers:", response.headers);
+
+            // Let's first check what the raw response looks like
+            const responseText = await response.text();
+            console.log("Raw response text:", responseText);
+
             if (response.ok) {
-                const data = await response.json();
-                toast({
-                    title: "Account created successfully",
-                    description: `Welcome, ${data.user.firstName}! You can now sign in.`,
-                });
-                // Redirect to login
-                window.location.href = "/login";
+                try {
+                    // Parse the response text as JSON
+                    const data = JSON.parse(responseText);
+                    console.log("Signup success data:", data);
+                    toast({
+                        title: "Account created successfully",
+                        description: `Welcome, ${data.user.firstName}! You can now sign in.`,
+                    });
+                    // Redirect to login
+                    window.location.href = "/login";
+                } catch (jsonError) {
+                    console.error("Failed to parse JSON response:", jsonError);
+                    console.log("Response was not valid JSON:", responseText);
+                    toast({
+                        title: "Signup completed",
+                        description:
+                            "Account created but response parsing failed. Try logging in.",
+                        variant: "destructive",
+                    });
+                }
             } else {
-                const error = await response.json();
-                toast({
-                    title: "Signup failed",
-                    description: error.message || "Failed to create account",
-                    variant: "destructive",
-                });
+                console.log("Signup failed with status:", response.status);
+                try {
+                    const error = JSON.parse(responseText);
+                    console.log("Signup error data:", error);
+                    toast({
+                        title: "Signup failed",
+                        description:
+                            error.message || "Failed to create account",
+                        variant: "destructive",
+                    });
+                } catch (parseError) {
+                    console.log("Error response was not JSON:", responseText);
+                    toast({
+                        title: "Signup failed",
+                        description: "Server error occurred",
+                        variant: "destructive",
+                    });
+                }
             }
         } catch (error) {
             toast({

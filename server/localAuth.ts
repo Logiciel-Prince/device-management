@@ -7,7 +7,14 @@ import { storage } from "./storage";
 import bcrypt from "bcrypt";
 
 // Simple user credentials for demo (in production, use proper user management)
-const DEMO_USERS = [
+const DEMO_USERS: Array<{
+    id: string;
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+    role: "admin" | "employee";
+}> = [
     {
         id: "admin-1",
         email: "admin@company.com",
@@ -117,6 +124,87 @@ export async function setupAuth(app: Express) {
         });
     });
 
+    // Signup endpoint
+    app.post("/api/signup", async (req, res) => {
+        try {
+            const { firstName, lastName, email, password, role } = req.body;
+
+            // Validate required fields
+            if (!firstName || !lastName || !email || !password) {
+                return res.status(400).json({
+                    message: "All fields are required",
+                });
+            }
+
+            // Validate email format
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                return res.status(400).json({
+                    message: "Invalid email format",
+                });
+            }
+
+            // Validate password length
+            if (password.length < 6) {
+                return res.status(400).json({
+                    message: "Password must be at least 6 characters long",
+                });
+            }
+
+            // Check if user already exists
+            const existingUser = await storage.getUserByEmail(email);
+            if (existingUser) {
+                return res.status(409).json({
+                    message: "User with this email already exists",
+                });
+            }
+
+            // Generate unique ID
+            const userId = `user-${Date.now()}-${Math.random()
+                .toString(36)
+                .substr(2, 9)}`;
+
+            // Hash password (in production, use bcrypt)
+            // For demo purposes, we'll store plain text but in production use:
+            // const hashedPassword = await bcrypt.hash(password, 10);
+
+            // Create user in database
+            const newUser = await storage.upsertUser({
+                id: userId,
+                email,
+                firstName,
+                lastName,
+                role: role || "employee",
+            });
+
+            // Add to demo users array for login (temporary solution)
+            DEMO_USERS.push({
+                id: userId,
+                email,
+                password, // In production, store hashed password
+                firstName,
+                lastName,
+                role: role || "employee",
+            });
+
+            res.status(201).json({
+                message: "Account created successfully",
+                user: {
+                    id: newUser.id,
+                    email: newUser.email,
+                    firstName: newUser.firstName,
+                    lastName: newUser.lastName,
+                    role: newUser.role,
+                },
+            });
+        } catch (error) {
+            console.error("Signup error:", error);
+            res.status(500).json({
+                message: "Failed to create account",
+            });
+        }
+    });
+
     // Get current user
     app.get("/api/auth/user", isAuthenticated, (req, res) => {
         res.json(req.user);
@@ -152,6 +240,15 @@ export async function setupAuth(app: Express) {
 
     app.get("/api/logout", logoutHandler);
     app.post("/api/logout", logoutHandler);
+
+    // Test endpoint to verify JSON responses work
+    app.get("/api/test", (req, res) => {
+        console.log("Test endpoint called");
+        res.json({
+            message: "Test endpoint working",
+            timestamp: new Date().toISOString(),
+        });
+    });
 
     // Demo users endpoint (for development)
     app.get("/api/demo-users", (req, res) => {

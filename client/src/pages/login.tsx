@@ -153,6 +153,21 @@ export default function Login() {
                                 {isLoading ? "Signing in..." : "Sign In"}
                             </Button>
                         </form>
+
+                        <div className="mt-4 text-center">
+                            <p className="text-sm text-muted-foreground">
+                                Don't have an account?{" "}
+                                <Button
+                                    variant="link"
+                                    className="p-0 h-auto font-medium"
+                                    onClick={() =>
+                                        (window.location.href = "/signup")
+                                    }
+                                >
+                                    Sign up here
+                                </Button>
+                            </p>
+                        </div>
                     </CardContent>
                 </Card>
 

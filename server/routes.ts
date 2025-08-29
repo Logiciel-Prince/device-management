@@ -16,6 +16,11 @@ import { writeFileSync, existsSync, mkdirSync } from "fs";
 import { join } from "path";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+    // Test endpoint to verify API routing works
+    app.get("/api/health", (req, res) => {
+        res.json({ status: "ok", timestamp: new Date().toISOString() });
+    });
+
     // Auth middleware
     await setupAuth(app);
 
