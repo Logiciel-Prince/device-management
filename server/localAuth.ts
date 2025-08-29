@@ -2,36 +2,17 @@ import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import session from "express-session";
 import type { Express, RequestHandler } from "express";
-import connectPg from "connect-pg-simple";
 import { storage } from "./storage";
-import bcrypt from "bcrypt";
 
-// Simple user credentials for demo (in production, use proper user management)
-const DEMO_USERS: Array<{
+// Registered users storage (temporary - in production use proper database)
+const REGISTERED_USERS: Array<{
     id: string;
     email: string;
     password: string;
     firstName: string;
     lastName: string;
     role: "admin" | "employee";
-}> = [
-    {
-        id: "admin-1",
-        email: "admin@company.com",
-        password: "admin123", // In production, this should be hashed
-        firstName: "Admin",
-        lastName: "User",
-        role: "admin" as const,
-    },
-    {
-        id: "employee-1",
-        email: "employee@company.com",
-        password: "employee123", // In production, this should be hashed
-        firstName: "Employee",
-        lastName: "User",
-        role: "employee" as const,
-    },
-];
+}> = [];
 
 export function getSession() {
     const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
@@ -64,8 +45,10 @@ export async function setupAuth(app: Express) {
             },
             async (email, password, done) => {
                 try {
-                    // Find user in demo users
-                    const user = DEMO_USERS.find((u) => u.email === email);
+                    // Find user in registered users
+                    const user = REGISTERED_USERS.find(
+                        (u) => u.email === email
+                    );
 
                     if (!user) {
                         return done(null, false, {
@@ -79,15 +62,6 @@ export async function setupAuth(app: Express) {
                             message: "Invalid email or password",
                         });
                     }
-
-                    // Upsert user in database
-                    await storage.upsertUser({
-                        id: user.id,
-                        email: user.email,
-                        firstName: user.firstName,
-                        lastName: user.lastName,
-                        role: user.role,
-                    });
 
                     return done(null, {
                         id: user.id,
@@ -162,10 +136,10 @@ export async function setupAuth(app: Express) {
             // Generate unique ID
             const userId = `user-${Date.now()}-${Math.random()
                 .toString(36)
-                .substr(2, 9)}`;
+                .substring(2, 11)}`;
 
             // Hash password (in production, use bcrypt)
-            // For demo purposes, we'll store plain text but in production use:
+            // For now, we'll store plain text but in production use:
             // const hashedPassword = await bcrypt.hash(password, 10);
 
             // Create user in database
@@ -177,8 +151,8 @@ export async function setupAuth(app: Express) {
                 role: role || "employee",
             });
 
-            // Add to demo users array for login (temporary solution)
-            DEMO_USERS.push({
+            // Add to registered users array for login (temporary solution)
+            REGISTERED_USERS.push({
                 id: userId,
                 email,
                 password, // In production, store hashed password
@@ -248,18 +222,6 @@ export async function setupAuth(app: Express) {
             message: "Test endpoint working",
             timestamp: new Date().toISOString(),
         });
-    });
-
-    // Demo users endpoint (for development)
-    app.get("/api/demo-users", (req, res) => {
-        res.json(
-            DEMO_USERS.map((u) => ({
-                email: u.email,
-                password: u.password,
-                role: u.role,
-                name: `${u.firstName} ${u.lastName}`,
-            }))
-        );
     });
 }
 

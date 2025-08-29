@@ -17,16 +17,7 @@ export default function Login() {
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
-    const [demoUsers, setDemoUsers] = useState<any[]>([]);
     const { toast } = useToast();
-
-    // Load demo users on component mount
-    useEffect(() => {
-        fetch("/api/demo-users")
-            .then((res) => res.json())
-            .then((users) => setDemoUsers(users))
-            .catch(console.error);
-    }, []);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -66,11 +57,6 @@ export default function Login() {
         } finally {
             setIsLoading(false);
         }
-    };
-
-    const fillDemoCredentials = (user: any) => {
-        setEmail(user.email);
-        setPassword(user.password);
     };
 
     return (
@@ -170,40 +156,6 @@ export default function Login() {
                         </div>
                     </CardContent>
                 </Card>
-
-                {/* Demo Users */}
-                {demoUsers.length > 0 && (
-                    <Card>
-                        <CardHeader>
-                            <CardTitle className="text-sm">
-                                Demo Accounts
-                            </CardTitle>
-                            <CardDescription className="text-xs">
-                                Click to auto-fill credentials for testing
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-2">
-                            {demoUsers.map((user, index) => (
-                                <Button
-                                    key={index}
-                                    variant="outline"
-                                    size="sm"
-                                    className="w-full justify-start text-left"
-                                    onClick={() => fillDemoCredentials(user)}
-                                >
-                                    <div className="flex flex-col items-start">
-                                        <span className="font-medium">
-                                            {user.name}
-                                        </span>
-                                        <span className="text-xs text-muted-foreground">
-                                            {user.email} • {user.role}
-                                        </span>
-                                    </div>
-                                </Button>
-                            ))}
-                        </CardContent>
-                    </Card>
-                )}
             </div>
         </div>
     );
