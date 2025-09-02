@@ -53,8 +53,14 @@ export function TopBar({ title, subtitle, action }: TopBarProps) {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
           </div>
           
-          {/* Theme Toggle */}
-          <ThemeToggle />
+          {/* Theme Toggle - Only for Admin */}
+          {user?.role === "admin" && <ThemeToggle />}
+          {/* Debug: Remove this after testing */}
+          {process.env.NODE_ENV === "development" && (
+            <div className="text-xs text-muted-foreground">
+              Role: {user?.role || "undefined"}
+            </div>
+          )}
           
           {/* Profile Button */}
           <Button 
