@@ -74,6 +74,7 @@ const requestSchema = new mongoose.Schema(
         approvedAt: { type: Date },
         rejectionReason: { type: String },
         assignedDeviceId: { type: String, ref: "Device" },
+        slackMessageTs: { type: String }, // Slack message timestamp for threading
         createdAt: { type: Date, default: Date.now },
         updatedAt: { type: Date, default: Date.now },
     },

@@ -136,7 +136,9 @@ export type UpsertUser = typeof users.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type Device = typeof devices.$inferSelect;
 export type InsertDevice = z.infer<typeof insertDeviceSchema>;
-export type Request = typeof requests.$inferSelect;
+export type Request = typeof requests.$inferSelect & {
+  slackMessageTs?: string; // Slack message timestamp for threading
+};
 export type InsertRequest = z.infer<typeof insertRequestSchema>;
 export type DeviceLog = typeof deviceLogs.$inferSelect;
 export type InsertDeviceLog = z.infer<typeof insertDeviceLogSchema>;

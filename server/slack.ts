@@ -27,6 +27,14 @@ export async function sendSlackMessage(
 ): Promise<string | undefined> {
     const slackClient = getSlackClient();
 
+    // Debug logging
+    console.log("sendSlackMessage called with:", {
+        channel: message.channel,
+        hasText: !!message.text,
+        hasBlocks: !!message.blocks,
+        thread_ts: message.thread_ts,
+    });
+
     // Check if Slack is configured
     if (
         !slackClient ||
