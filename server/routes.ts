@@ -43,6 +43,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
     });
 
+    // Debug endpoint to list Slack channels (admin only)
+    app.get("/api/slack/channels", isAuthenticated, async (req, res) => {
+        try {
+            // Only allow admins to access this debug endpoint
+            if (req.user?.role !== 'admin') {
+                return res.status(403).json({ message: "Admin access required" });
+            }
+
+            if (!process.env.SLACK_BOT_TOKEN) {
+                return res.status(400).json({ message: "Slack not configured" });
+            }
+
+            const { WebClient } = await import("@slack/web-api");
+            const slack = new WebClient(process.env.SLACK_BOT_TOKEN);
+            
+            const result = await slack.conversations.list({
+                types: "public_channel,private_channel",
+                limit: 100
+            });
+
+            const channels = result.channels?.map(channel => ({
+                id: channel.id,
+                name: channel.name,
+                is_member: channel.is_member,
+                is_private: channel.is_private
+            })) || [];
+
+            res.json({ channels });
+        } catch (error: any) {
+            console.error("Error listing Slack channels:", error);
+            res.status(500).json({ 
+                message: "Failed to list channels",
+                error: error.message 
+            });
+        }
+    });
+
     // Get all users (admin only)
     app.get("/api/users", isAuthenticated, async (req: any, res) => {
         try {
