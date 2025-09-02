@@ -23,6 +23,10 @@ export default function Dashboard() {
         queryKey: ["/api/requests"],
     });
 
+    const { data: integrations } = useQuery({
+        queryKey: ["/api/integrations/status"],
+    });
+
     const recentRequests = requests?.slice(0, 3) || [];
     const utilization = stats
         ? Math.round((stats.assignedDevices / stats.totalDevices) * 100)
@@ -152,21 +156,46 @@ export default function Dashboard() {
                                 <CardContent className="space-y-3">
                                     <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 bg-purple-600 rounded flex items-center justify-center">
-                                                <Slack className="w-4 h-4 text-white" />
+                                            <div
+                                                className={`w-8 h-8 rounded flex items-center justify-center ${
+                                                    integrations?.slack
+                                                        ?.configured
+                                                        ? "bg-purple-600"
+                                                        : "bg-muted"
+                                                }`}
+                                            >
+                                                <Slack
+                                                    className={`w-4 h-4 ${
+                                                        integrations?.slack
+                                                            ?.configured
+                                                            ? "text-white"
+                                                            : "text-muted-foreground"
+                                                    }`}
+                                                />
                                             </div>
                                             <div>
                                                 <p className="text-sm font-medium">
                                                     Slack
                                                 </p>
                                                 <p className="text-xs text-muted-foreground">
-                                                    Notifications active
+                                                    {integrations?.slack
+                                                        ?.configured
+                                                        ? "Notifications active"
+                                                        : "Setup required"}
                                                 </p>
                                             </div>
                                         </div>
                                         <span
-                                            className="w-2 h-2 bg-green-500 rounded-full"
-                                            data-testid="status-slack-active"
+                                            className={`w-2 h-2 rounded-full ${
+                                                integrations?.slack?.configured
+                                                    ? "bg-green-500"
+                                                    : "bg-muted"
+                                            }`}
+                                            data-testid={
+                                                integrations?.slack?.configured
+                                                    ? "status-slack-active"
+                                                    : "status-slack-inactive"
+                                            }
                                         ></span>
                                     </div>
 

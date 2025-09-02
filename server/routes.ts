@@ -26,6 +26,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
     // Auth routes are now handled in localAuth.ts
 
+    // Integration status endpoint
+    app.get("/api/integrations/status", isAuthenticated, (req, res) => {
+        const slackConfigured = !!(
+            process.env.SLACK_BOT_TOKEN &&
+            process.env.SLACK_CHANNEL_ID &&
+            process.env.SLACK_BOT_TOKEN !== "your-slack-bot-token" &&
+            process.env.SLACK_CHANNEL_ID !== "your-slack-channel-id"
+        );
+
+        res.json({
+            slack: {
+                configured: slackConfigured,
+                status: slackConfigured ? "active" : "inactive",
+            },
+        });
+    });
+
     // Get all users (admin only)
     app.get("/api/users", isAuthenticated, async (req: any, res) => {
         try {
