@@ -1,10 +1,15 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Smartphone, Shield, Users, Zap, ArrowRight } from "lucide-react";
 
 export default function Landing() {
   return (
       <div className="min-h-screen bg-gradient-to-br from-background to-muted">
+          {/* Theme Toggle in top right */}
+          <div className="absolute top-4 right-4">
+              <ThemeToggle />
+          </div>
           <div className="container mx-auto px-4 py-16">
               {/* Header */}
               <div className="text-center mb-16">

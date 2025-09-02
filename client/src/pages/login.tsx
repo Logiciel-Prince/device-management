@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Smartphone, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -61,6 +62,10 @@ export default function Login() {
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-background to-muted flex items-center justify-center p-4">
+            {/* Theme Toggle in top right */}
+            <div className="absolute top-4 right-4">
+                <ThemeToggle />
+            </div>
             <div className="w-full max-w-md space-y-6">
                 {/* Header */}
                 <div className="text-center">

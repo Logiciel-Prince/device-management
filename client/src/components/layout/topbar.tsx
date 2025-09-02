@@ -3,6 +3,7 @@ import { Input } from "@/components/ui/input";
 import { Bell, Menu, Search, User } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { useAuth } from "@/hooks/useAuth";
 import { useState } from "react";
 import { ProfileModal } from "@/components/profile/profile-modal";
@@ -51,6 +52,9 @@ export function TopBar({ title, subtitle, action }: TopBarProps) {
             />
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
           </div>
+          
+          {/* Theme Toggle */}
+          <ThemeToggle />
           
           {/* Profile Button */}
           <Button 
