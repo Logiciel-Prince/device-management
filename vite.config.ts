@@ -11,6 +11,33 @@ export default defineConfig({
             "@assets": path.resolve(import.meta.dirname, "attached_assets"),
         },
     },
+    optimizeDeps: {
+        exclude: [
+            // Exclude problematic dependencies from pre-bundling
+            "@radix-ui/react-dialog",
+            "@radix-ui/react-dropdown-menu",
+            "@radix-ui/react-select",
+            "@radix-ui/react-popover",
+            "@radix-ui/react-tooltip",
+            "@radix-ui/react-accordion",
+            "@radix-ui/react-navigation-menu",
+            "framer-motion",
+            "recharts",
+            "embla-carousel-react",
+            "vaul",
+        ],
+        include: [
+            // Force include these for better performance
+            "react",
+            "react-dom",
+            "react-hook-form",
+            "@hookform/resolvers",
+            "@tanstack/react-query",
+            "lucide-react",
+            "clsx",
+            "tailwind-merge",
+        ],
+    },
     root: path.resolve(import.meta.dirname, "client"),
     build: {
         outDir: path.resolve(import.meta.dirname, "dist/public"),
@@ -19,11 +46,15 @@ export default defineConfig({
             output: {
                 manualChunks: {
                     // Separate vendor chunks
-                    'react-vendor': ['react', 'react-dom'],
-                    'ui-vendor': ['@radix-ui/react-dialog', '@radix-ui/react-dropdown-menu', '@radix-ui/react-select'],
-                    'chart-vendor': ['recharts'],
-                    'query-vendor': ['@tanstack/react-query'],
-                    'form-vendor': ['react-hook-form', '@hookform/resolvers'],
+                    "react-vendor": ["react", "react-dom"],
+                    "ui-vendor": [
+                        "@radix-ui/react-dialog",
+                        "@radix-ui/react-dropdown-menu",
+                        "@radix-ui/react-select",
+                    ],
+                    "chart-vendor": ["recharts"],
+                    "query-vendor": ["@tanstack/react-query"],
+                    "form-vendor": ["react-hook-form", "@hookform/resolvers"],
                 },
             },
         },
