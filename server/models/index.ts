@@ -30,7 +30,17 @@ const deviceSchema = new mongoose.Schema(
         name: { type: String, required: true },
         type: { type: String, required: true },
         model: { type: String, required: true },
-        serialNumber: { type: String, required: true, unique: true },
+        serialNumber: {
+            type: String,
+            required: true,
+            unique: true,
+            validate: {
+                validator: function (v: string) {
+                    return v && v.trim().length > 0;
+                },
+                message: "Serial number cannot be empty",
+            },
+        },
         status: {
             type: String,
             required: true,

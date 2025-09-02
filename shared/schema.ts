@@ -96,12 +96,19 @@ export const insertUserSchema = createInsertSchema(users).omit({
   updatedAt: true,
 });
 
-export const insertDeviceSchema = createInsertSchema(devices).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-  lastActivity: true,
-});
+export const insertDeviceSchema = createInsertSchema(devices)
+    .omit({
+        id: true,
+        createdAt: true,
+        updatedAt: true,
+        lastActivity: true,
+    })
+    .extend({
+        serialNumber: z.string().min(1, "Serial number is required").trim(),
+        name: z.string().min(1, "Device name is required").trim(),
+        type: z.string().min(1, "Device type is required"),
+        model: z.string().min(1, "Model is required").trim(),
+    });
 
 export const insertRequestSchema = createInsertSchema(requests).omit({
   id: true,

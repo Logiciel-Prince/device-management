@@ -172,6 +172,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     errors: error.errors,
                 });
             }
+
+            // Handle MongoDB validation errors
+            if (error.name === "ValidationError") {
+                const validationErrors = Object.values(error.errors).map(
+                    (err: any) => ({
+                        field: err.path,
+                        message: err.message,
+                    })
+                );
+                return res.status(400).json({
+                    message: "Device validation failed",
+                    errors: validationErrors,
+                });
+            }
+
+            // Handle duplicate key errors (unique constraint violations)
+            if (error.code === 11000) {
+                const field = Object.keys(error.keyPattern)[0];
+                return res.status(409).json({
+                    message: `A device with this ${field} already exists`,
+                });
+            }
+
             console.error("Error creating device:", error);
             res.status(500).json({ message: "Failed to create device" });
         }
