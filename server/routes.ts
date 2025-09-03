@@ -47,35 +47,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     app.get("/api/slack/channels", isAuthenticated, async (req, res) => {
         try {
             // Only allow admins to access this debug endpoint
-            if (req.user?.role !== 'admin') {
-                return res.status(403).json({ message: "Admin access required" });
+            if (req.user?.role !== "admin") {
+                return res
+                    .status(403)
+                    .json({ message: "Admin access required" });
             }
 
             if (!process.env.SLACK_BOT_TOKEN) {
-                return res.status(400).json({ message: "Slack not configured" });
+                return res
+                    .status(400)
+                    .json({ message: "Slack not configured" });
             }
 
             const { WebClient } = await import("@slack/web-api");
             const slack = new WebClient(process.env.SLACK_BOT_TOKEN);
-            
+
             const result = await slack.conversations.list({
                 types: "public_channel,private_channel",
-                limit: 100
+                limit: 100,
             });
 
-            const channels = result.channels?.map(channel => ({
-                id: channel.id,
-                name: channel.name,
-                is_member: channel.is_member,
-                is_private: channel.is_private
-            })) || [];
+            const channels =
+                result.channels?.map((channel) => ({
+                    id: channel.id,
+                    name: channel.name,
+                    is_member: channel.is_member,
+                    is_private: channel.is_private,
+                })) || [];
 
             res.json({ channels });
         } catch (error: any) {
             console.error("Error listing Slack channels:", error);
-            res.status(500).json({ 
+            res.status(500).json({
                 message: "Failed to list channels",
-                error: error.message 
+                error: error.message,
             });
         }
     });
@@ -343,56 +348,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
             // Send Slack notification (only if configured)
             try {
-                if (process.env.SLACK_BOT_TOKEN && process.env.SLACK_CHANNEL_ID) {
+                if (
+                    process.env.SLACK_BOT_TOKEN &&
+                    process.env.SLACK_CHANNEL_ID
+                ) {
                     const messageTs = await sendSlackMessage({
                         channel: process.env.SLACK_CHANNEL_ID,
                         blocks: [
-                        {
-                            type: "section",
-                            text: {
-                                type: "mrkdwn",
-                                text: "*New Device Request* :smartphone:",
+                            {
+                                type: "section",
+                                text: {
+                                    type: "mrkdwn",
+                                    text: "*New Device Request* :smartphone:",
+                                },
                             },
-                        },
-                        {
-                            type: "section",
-                            fields: [
-                                {
-                                    type: "mrkdwn",
-                                    text: `*Employee:* ${user.firstName} ${user.lastName}`,
-                                },
-                                {
-                                    type: "mrkdwn",
-                                    text: `*Device:* ${request.deviceType} ${
-                                        request.deviceModel || ""
-                                    }`,
-                                },
-                                {
-                                    type: "mrkdwn",
-                                    text: `*Reason:* ${
-                                        request.reason || "Not specified"
-                                    }`,
-                                },
-                                {
-                                    type: "mrkdwn",
-                                    text: `*Request ID:* ${request.id}`,
-                                },
-                            ],
-                        },
-                    ],
-                });
+                            {
+                                type: "section",
+                                fields: [
+                                    {
+                                        type: "mrkdwn",
+                                        text: `*Employee:* ${user.firstName} ${user.lastName}`,
+                                    },
+                                    {
+                                        type: "mrkdwn",
+                                        text: `*Device:* ${
+                                            request.deviceType
+                                        } ${request.deviceModel || ""}`,
+                                    },
+                                    {
+                                        type: "mrkdwn",
+                                        text: `*Reason:* ${
+                                            request.reason || "Not specified"
+                                        }`,
+                                    },
+                                    {
+                                        type: "mrkdwn",
+                                        text: `*Request ID:* ${request.id}`,
+                                    },
+                                ],
+                            },
+                        ],
+                    });
 
                     // Store the Slack message timestamp for threading
                     if (messageTs) {
-                        console.log('Storing Slack message timestamp:', messageTs, 'for request:', request.id);
+                        console.log(
+                            "Storing Slack message timestamp:",
+                            messageTs,
+                            "for request:",
+                            request.id
+                        );
                         await storage.updateRequest(request.id, {
                             slackMessageTs: messageTs,
                         });
                     } else {
-                        console.log('No Slack message timestamp received');
+                        console.log("No Slack message timestamp received");
                     }
                 } else {
-                    console.log('Slack integration not configured, skipping notification');
+                    console.log(
+                        "Slack integration not configured, skipping notification"
+                    );
                 }
             } catch (slackError) {
                 console.error("Failed to send Slack notification:", slackError);
@@ -461,8 +476,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
                 // Send Slack notification as thread reply (only if configured)
                 try {
-                    if (process.env.SLACK_BOT_TOKEN && process.env.SLACK_CHANNEL_ID) {
-                        console.log('Sending approval message with thread_ts:', request.slackMessageTs);
+                    if (
+                        process.env.SLACK_BOT_TOKEN &&
+                        process.env.SLACK_CHANNEL_ID
+                    ) {
+                        console.log(
+                            "Sending approval message with thread_ts:",
+                            request.slackMessageTs
+                        );
                         await sendSlackMessage({
                             channel: process.env.SLACK_CHANNEL_ID,
                             text: `✅ Device request approved for ${request.user.firstName} ${request.user.lastName}`,
@@ -516,8 +537,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
                 // Send Slack notification as thread reply (only if configured)
                 try {
-                    if (process.env.SLACK_BOT_TOKEN && process.env.SLACK_CHANNEL_ID) {
-                        console.log('Sending rejection message with thread_ts:', request.slackMessageTs);
+                    if (
+                        process.env.SLACK_BOT_TOKEN &&
+                        process.env.SLACK_CHANNEL_ID
+                    ) {
+                        console.log(
+                            "Sending rejection message with thread_ts:",
+                            request.slackMessageTs
+                        );
                         await sendSlackMessage({
                             channel: process.env.SLACK_CHANNEL_ID,
                             text: `❌ Device request rejected for ${
@@ -583,6 +610,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     action: "returned",
                     notes: `Device returned by ${user.firstName} ${user.lastName}`,
                 });
+
+                // Send Slack notification in the original request thread (only if configured)
+                console.log(
+                    "Debug - Starting device return Slack notification"
+                );
+                console.log("Debug - Device ID being returned:", req.params.id);
+
+                try {
+                    if (
+                        process.env.SLACK_BOT_TOKEN &&
+                        process.env.SLACK_CHANNEL_ID
+                    ) {
+                        console.log(
+                            "Debug - Slack is configured, proceeding with notification"
+                        );
+                        // Find the original request that assigned this device
+                        const requests = await storage.getRequests();
+                        console.log(
+                            "Debug - Looking for request with deviceId:",
+                            req.params.id
+                        );
+                        console.log(
+                            "Debug - Total requests found:",
+                            requests.length
+                        );
+
+                        const approvedRequests = requests.filter(
+                            (r) => r.status === "approved"
+                        );
+                        console.log(
+                            "Debug - Approved requests:",
+                            approvedRequests.length
+                        );
+
+                        const requestsWithDevice = approvedRequests.filter(
+                            (r) => r.assignedDeviceId === req.params.id
+                        );
+                        console.log(
+                            "Debug - Requests with this device:",
+                            requestsWithDevice.length
+                        );
+
+                        // Show some sample approved requests to debug
+                        console.log(
+                            "Debug - Sample approved requests with devices:"
+                        );
+                        approvedRequests.slice(0, 3).forEach((r) => {
+                            console.log(
+                                `  Request ${r.id}: assignedDeviceId=${r.assignedDeviceId}, slackMessageTs=${r.slackMessageTs}`
+                            );
+                        });
+
+                        const requestsWithSlack = requestsWithDevice.filter(
+                            (r) => r.slackMessageTs
+                        );
+                        console.log(
+                            "Debug - Requests with Slack timestamp:",
+                            requestsWithSlack.length
+                        );
+
+                        const originalRequest = requests.find(
+                            (request) =>
+                                request.assignedDeviceId === req.params.id &&
+                                request.status === "approved" &&
+                                request.slackMessageTs
+                        );
+
+                        if (originalRequest && originalRequest.slackMessageTs) {
+                            console.log(
+                                "Sending device return message with thread_ts:",
+                                originalRequest.slackMessageTs
+                            );
+                            await sendSlackMessage({
+                                channel: process.env.SLACK_CHANNEL_ID,
+                                text: `🔄 Device returned by ${user.firstName} ${user.lastName}\n📱 Device: ${device.name} (${device.type})`,
+                                thread_ts: originalRequest.slackMessageTs,
+                            });
+                        } else {
+                            console.log(
+                                "No original request found for device return, sending standalone message"
+                            );
+                            await sendSlackMessage({
+                                channel: process.env.SLACK_CHANNEL_ID,
+                                text: `🔄 Device returned by ${user.firstName} ${user.lastName}\n📱 Device: ${device.name} (${device.type})`,
+                            });
+                        }
+                    }
+                } catch (slackError) {
+                    console.error(
+                        "Failed to send Slack notification for device return:",
+                        slackError
+                    );
+                }
 
                 res.json(updatedDevice);
             } catch (error) {

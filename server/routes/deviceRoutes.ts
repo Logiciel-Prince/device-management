@@ -146,6 +146,48 @@ router.put(
             notes: `Device returned by ${user.firstName} ${user.lastName}`,
         });
 
+        // Send Slack notification in the original request thread (only if configured)
+        try {
+            if (process.env.SLACK_BOT_TOKEN && process.env.SLACK_CHANNEL_ID) {
+                // Import sendSlackMessage function
+                const { sendSlackMessage } = await import("../slack");
+
+                // Find the original request that assigned this device
+                const requests = await storage.getRequests();
+                const originalRequest = requests.find(
+                    (request) =>
+                        request.assignedDeviceId === req.params.id &&
+                        request.status === "approved" &&
+                        request.slackMessageTs
+                );
+
+                if (originalRequest && originalRequest.slackMessageTs) {
+                    console.log(
+                        "Sending device return message with thread_ts:",
+                        originalRequest.slackMessageTs
+                    );
+                    await sendSlackMessage({
+                        channel: process.env.SLACK_CHANNEL_ID,
+                        text: `🔄 Device returned by ${user.firstName} ${user.lastName}\n📱 Device: ${device.name} (${device.type})`,
+                        thread_ts: originalRequest.slackMessageTs,
+                    });
+                } else {
+                    console.log(
+                        "No original request found for device return, sending standalone message"
+                    );
+                    await sendSlackMessage({
+                        channel: process.env.SLACK_CHANNEL_ID,
+                        text: `🔄 Device returned by ${user.firstName} ${user.lastName}\n📱 Device: ${device.name} (${device.type})`,
+                    });
+                }
+            }
+        } catch (slackError) {
+            console.error(
+                "Failed to send Slack notification for device return:",
+                slackError
+            );
+        }
+
         res.json(updatedDevice);
     })
 );
