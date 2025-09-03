@@ -30,6 +30,11 @@ const PageLoader = () => (
 function Router() {
     const { user, isAuthenticated, isLoading } = useAuth();
 
+    // Show loading spinner while checking authentication
+    if (isLoading) {
+        return <PageLoader />;
+    }
+
     return (
         <Suspense fallback={<PageLoader />}>
             <Switch>
@@ -39,7 +44,7 @@ function Router() {
                 <Route path="/admin" component={AdminLanding} />
                 <Route path="/employee" component={EmployeeLanding} />
 
-                {isLoading || !isAuthenticated ? (
+                {!isAuthenticated ? (
                     <Route path="/" component={Landing} />
                 ) : (
                     <>

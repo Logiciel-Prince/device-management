@@ -1,6 +1,7 @@
 import passport from "passport";
 import { Strategy as LocalStrategy } from "passport-local";
 import session from "express-session";
+import MemoryStore from "memorystore";
 import type { Express, RequestHandler } from "express";
 import { storage } from "./storage";
 import { AuthService } from "./services/authService";
@@ -24,7 +25,6 @@ const loginSchema = z.object({
 export function getSession() {
     const sessionTtl = 7 * 24 * 60 * 60 * 1000; // 1 week
 
-    // Use memory store for local development (in production, use proper session store)
     return session({
         secret: process.env.SESSION_SECRET || "local-dev-session-secret",
         resave: false,
@@ -39,7 +39,10 @@ export function getSession() {
 
 export async function setupAuth(app: Express) {
     app.set("trust proxy", 1);
+    
+    // Session middleware
     app.use(getSession());
+    
     app.use(passport.initialize());
     app.use(passport.session());
 
@@ -77,9 +80,12 @@ export async function setupAuth(app: Express) {
 
     passport.deserializeUser(async (id: string, done) => {
         try {
+            console.log("Deserializing user with ID:", id);
             const user = await storage.getUser(id);
+            console.log("Deserialized user:", user?.email || "not found");
             done(null, user);
         } catch (error) {
+            console.error("Deserialization error:", error);
             done(error);
         }
     });
@@ -89,7 +95,11 @@ export async function setupAuth(app: Express) {
         "/api/login",
         validateBody(loginSchema),
         passport.authenticate("local"),
-        (req, res) => {
+        (req: any, res) => {
+            console.log("Login successful for user:", req.user?.email);
+            console.log("Session ID:", req.sessionID);
+            console.log("Session passport:", req.session.passport);
+            
             res.json({
                 message: "Login successful",
                 user: req.user,
@@ -183,6 +193,19 @@ export async function setupAuth(app: Express) {
         res.json(req.user);
     });
 
+    // Session health check endpoint
+    app.get("/api/auth/session", (req: any, res) => {
+        res.json({
+            sessionID: req.sessionID,
+            authenticated: req.isAuthenticated(),
+            user: req.user || null,
+            sessionData: {
+                cookie: req.session.cookie,
+                passport: req.session.passport || null,
+            },
+        });
+    });
+
     // Logout endpoint - support both GET and POST
     const logoutHandler = (req: any, res: any) => {
         req.logout((err: any) => {
@@ -197,9 +220,16 @@ export async function setupAuth(app: Express) {
                     console.error("Session destruction error:", sessionErr);
                 }
 
-                // Clear all cookies
-                res.clearCookie("connect.sid", { path: "/" });
-                res.clearCookie("connect.sid");
+                // Clear session cookies with proper options
+                const cookieOptions = {
+                    path: "/",
+                    httpOnly: true,
+                    secure: process.env.NODE_ENV === "production",
+                    sameSite: process.env.NODE_ENV === "production" ? "strict" : "lax",
+                };
+
+                res.clearCookie("devicemgmt.sid", cookieOptions);
+                res.clearCookie("connect.sid", cookieOptions);
 
                 // For GET requests (from frontend links), redirect to login
                 if (req.method === "GET") {
