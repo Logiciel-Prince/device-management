@@ -79,6 +79,11 @@ export async function sendSlackMessage(
             }
         }
         console.error("Error sending Slack message:", error);
+        console.error("Error details:", {
+            code: error.code,
+            data: error.data,
+            message: error.message,
+        });
         return undefined; // Don't throw, just log and continue
     }
 }

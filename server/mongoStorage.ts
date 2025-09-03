@@ -361,6 +361,7 @@ export class MongoStorage implements IStorage {
             approvedAt: mongoRequest.approvedAt || null,
             rejectionReason: mongoRequest.rejectionReason || null,
             assignedDeviceId: mongoRequest.assignedDeviceId || null,
+            slackMessageTs: mongoRequest.slackMessageTs || null,
             createdAt: mongoRequest.createdAt || null,
             updatedAt: mongoRequest.updatedAt || null,
         };

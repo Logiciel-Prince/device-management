@@ -61,6 +61,7 @@ export const requests = pgTable("requests", {
   approvedAt: timestamp("approved_at"),
   rejectionReason: text("rejection_reason"),
   assignedDeviceId: varchar("assigned_device_id").references(() => devices.id),
+  slackMessageTs: varchar("slack_message_ts"), // Slack message timestamp for threading
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
