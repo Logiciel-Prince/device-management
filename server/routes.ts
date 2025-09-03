@@ -341,11 +341,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
             const request = await storage.createRequest(validatedData);
 
-            // Send Slack notification
+            // Send Slack notification (only if configured)
             try {
-                const messageTs = await sendSlackMessage({
-                    channel: process.env.SLACK_CHANNEL_ID!,
-                    blocks: [
+                if (process.env.SLACK_BOT_TOKEN && process.env.SLACK_CHANNEL_ID) {
+                    const messageTs = await sendSlackMessage({
+                        channel: process.env.SLACK_CHANNEL_ID,
+                        blocks: [
                         {
                             type: "section",
                             text: {
@@ -381,14 +382,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     ],
                 });
 
-                // Store the Slack message timestamp for threading
-                if (messageTs) {
-                    console.log('Storing Slack message timestamp:', messageTs, 'for request:', request.id);
-                    await storage.updateRequest(request.id, {
-                        slackMessageTs: messageTs,
-                    });
+                    // Store the Slack message timestamp for threading
+                    if (messageTs) {
+                        console.log('Storing Slack message timestamp:', messageTs, 'for request:', request.id);
+                        await storage.updateRequest(request.id, {
+                            slackMessageTs: messageTs,
+                        });
+                    } else {
+                        console.log('No Slack message timestamp received');
+                    }
                 } else {
-                    console.log('No Slack message timestamp received');
+                    console.log('Slack integration not configured, skipping notification');
                 }
             } catch (slackError) {
                 console.error("Failed to send Slack notification:", slackError);
@@ -455,14 +459,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     });
                 }
 
-                // Send Slack notification as thread reply
+                // Send Slack notification as thread reply (only if configured)
                 try {
-                    console.log('Sending approval message with thread_ts:', request.slackMessageTs);
-                    await sendSlackMessage({
-                        channel: process.env.SLACK_CHANNEL_ID!,
-                        text: `✅ Device request approved for ${request.user.firstName} ${request.user.lastName}`,
-                        thread_ts: request.slackMessageTs || undefined,
-                    });
+                    if (process.env.SLACK_BOT_TOKEN && process.env.SLACK_CHANNEL_ID) {
+                        console.log('Sending approval message with thread_ts:', request.slackMessageTs);
+                        await sendSlackMessage({
+                            channel: process.env.SLACK_CHANNEL_ID,
+                            text: `✅ Device request approved for ${request.user.firstName} ${request.user.lastName}`,
+                            thread_ts: request.slackMessageTs || undefined,
+                        });
+                    }
                 } catch (slackError) {
                     console.error(
                         "Failed to send Slack notification:",
@@ -508,18 +514,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
                     }
                 );
 
-                // Send Slack notification as thread reply
+                // Send Slack notification as thread reply (only if configured)
                 try {
-                    console.log('Sending rejection message with thread_ts:', request.slackMessageTs);
-                    await sendSlackMessage({
-                        channel: process.env.SLACK_CHANNEL_ID!,
-                        text: `❌ Device request rejected for ${
-                            request.user.firstName
-                        } ${request.user.lastName}. Reason: ${
-                            reason || "Not specified"
-                        }`,
-                        thread_ts: request.slackMessageTs || undefined,
-                    });
+                    if (process.env.SLACK_BOT_TOKEN && process.env.SLACK_CHANNEL_ID) {
+                        console.log('Sending rejection message with thread_ts:', request.slackMessageTs);
+                        await sendSlackMessage({
+                            channel: process.env.SLACK_CHANNEL_ID,
+                            text: `❌ Device request rejected for ${
+                                request.user.firstName
+                            } ${request.user.lastName}. Reason: ${
+                                reason || "Not specified"
+                            }`,
+                            thread_ts: request.slackMessageTs || undefined,
+                        });
+                    }
                 } catch (slackError) {
                     console.error(
                         "Failed to send Slack notification:",

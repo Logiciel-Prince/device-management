@@ -35,6 +35,12 @@ export async function sendSlackMessage(
         thread_ts: message.thread_ts,
     });
 
+    // Early return if no channel is provided
+    if (!message.channel) {
+        console.warn("No channel provided to sendSlackMessage");
+        return undefined;
+    }
+
     // Check if Slack is configured
     if (
         !slackClient ||
