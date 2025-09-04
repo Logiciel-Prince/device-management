@@ -1,0 +1,6 @@
+{
+  "scripts": {
+    "migrate:thread-ids": "node scripts/migrate-thread-ids.js",
+    "migrate:thread-ids:dry-run": "node scripts/migrate-thread-ids.js --dry-run"
+  }
+}

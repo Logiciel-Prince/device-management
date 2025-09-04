@@ -154,16 +154,112 @@ router.put(
 
                 // Find the original request that assigned this device
                 const requests = await storage.getRequests();
-                const originalRequest = requests.find(
-                    (request) =>
-                        request.assignedDeviceId === req.params.id &&
-                        request.status === "approved" &&
-                        request.slackMessageTs
+                console.log(
+                    `Debug - Looking for request with deviceId: ${req.params.id}`
+                );
+                console.log(`Debug - Total requests found: ${requests.length}`);
+
+                const approvedRequests = requests.filter(
+                    (r) => r.status === "approved"
+                );
+                console.log(
+                    `Debug - Approved requests: ${approvedRequests.length}`
                 );
 
-                if (originalRequest && originalRequest.slackMessageTs) {
+                const requestsWithDevice = requests.filter(
+                    (r) => r.assignedDeviceId === req.params.id
+                );
+                console.log(
+                    `Debug - Requests with this device: ${requestsWithDevice.length}`
+                );
+
+                // Show sample of approved requests with devices for debugging
+                const sampleRequests = approvedRequests
+                    .filter((r) => r.assignedDeviceId)
+                    .slice(0, 3);
+                console.log("Debug - Sample approved requests with devices:");
+                sampleRequests.forEach((r) => {
                     console.log(
-                        "Sending device return message with thread_ts:",
+                        `Request ${r.id}: assignedDeviceId=${r.assignedDeviceId}, slackMessageTs=${r.slackMessageTs}, slackThreadId=${r.slackThreadId}`
+                    );
+                });
+
+                const requestsWithSlackTs = requests.filter(
+                    (r) => r.slackMessageTs
+                );
+                console.log(
+                    `Debug - Requests with Slack timestamp: ${requestsWithSlackTs.length}`
+                );
+
+                // Import thread manager utility
+                const { findMostRecentRequestForDevice } = await import(
+                    "../threadManager"
+                );
+
+                // Find the MOST RECENT approved request for this device
+                const originalRequest = findMostRecentRequestForDevice(
+                    requests,
+                    req.params.id
+                );
+
+                if (originalRequest) {
+                    // Show which request was selected
+                    const allMatchingRequests = requests.filter(
+                        (request) =>
+                            request.assignedDeviceId === req.params.id &&
+                            request.status === "approved" &&
+                            request.slackMessageTs
+                    );
+
+                    if (allMatchingRequests.length > 1) {
+                        console.log(
+                            `Debug - Found ${allMatchingRequests.length} matching requests for device ${req.params.id}:`
+                        );
+                        allMatchingRequests.forEach((req, index) => {
+                            const isSelected = req.id === originalRequest.id;
+                            console.log(
+                                `  ${index + 1}. Request ${req.id}: approved=${
+                                    req.approvedAt
+                                }, created=${req.createdAt}, threadId=${
+                                    req.slackThreadId
+                                } ${
+                                    isSelected ? "← SELECTED (most recent)" : ""
+                                }`
+                            );
+                        });
+                    } else {
+                        console.log(
+                            `Debug - Found single matching request: ${originalRequest.id}`
+                        );
+                    }
+                }
+
+                if (originalRequest) {
+                    // If no thread ID, try to generate one
+                    if (
+                        !originalRequest.slackThreadId &&
+                        originalRequest.slackMessageTs
+                    ) {
+                        console.log(
+                            "Request found but missing thread ID, generating one..."
+                        );
+                        const threadId = `req_${originalRequest.id}`;
+
+                        // Update the request with thread ID
+                        await storage.updateRequest(originalRequest.id, {
+                            slackThreadId: threadId,
+                        });
+
+                        originalRequest.slackThreadId = threadId;
+                        console.log(
+                            `Generated thread ID: ${threadId} for request: ${originalRequest.id}`
+                        );
+                    }
+
+                    console.log(
+                        "Sending device return message with thread ID:",
+                        originalRequest.slackThreadId,
+                        "and thread_ts:",
                         originalRequest.slackMessageTs
                     );
                     await sendSlackMessage({

@@ -390,16 +390,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
                         ],
                     });
 
-                    // Store the Slack message timestamp for threading
+                    // Store thread information for better message tracking
                     if (messageTs) {
+                        const threadId = `req_${request.id}`;
                         console.log(
-                            "Storing Slack message timestamp:",
+                            "Storing thread info - ID:",
+                            threadId,
+                            "Slack TS:",
                             messageTs,
                             "for request:",
                             request.id
                         );
                         await storage.updateRequest(request.id, {
-                            slackMessageTs: messageTs,
+                            slackThreadId: threadId,
+                            slackMessageTs: messageTs, // Keep for backward compatibility
                         });
                     } else {
                         console.log("No Slack message timestamp received");
@@ -481,7 +485,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
                         process.env.SLACK_CHANNEL_ID
                     ) {
                         console.log(
-                            "Sending approval message with thread_ts:",
+                            "Sending approval message with thread ID:",
+                            request.slackThreadId,
+                            "and thread_ts:",
                             request.slackMessageTs
                         );
                         await sendSlackMessage({
@@ -542,7 +548,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
                         process.env.SLACK_CHANNEL_ID
                     ) {
                         console.log(
-                            "Sending rejection message with thread_ts:",
+                            "Sending rejection message with thread ID:",
+                            request.slackThreadId,
+                            "and thread_ts:",
                             request.slackMessageTs
                         );
                         await sendSlackMessage({
@@ -670,16 +678,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
                             requestsWithSlack.length
                         );
 
-                        const originalRequest = requests.find(
-                            (request) =>
-                                request.assignedDeviceId === req.params.id &&
-                                request.status === "approved" &&
-                                request.slackMessageTs
-                        );
+                        // Import thread manager utility
+                        const { findMostRecentRequestForDevice } = await import("./threadManager");
+                        
+                        // Find the MOST RECENT approved request for this device
+                        const originalRequest = findMostRecentRequestForDevice(requests, req.params.id);
+                        
+                        if (originalRequest) {
+                            // Show which request was selected
+                            const allMatchingRequests = requests.filter(
+                                (request) =>
+                                    request.assignedDeviceId === req.params.id &&
+                                    request.status === "approved" &&
+                                    request.slackMessageTs
+                            );
+                            
+                            if (allMatchingRequests.length > 1) {
+                                console.log(`Debug - Found ${allMatchingRequests.length} matching requests for device ${req.params.id}:`);
+                                allMatchingRequests.forEach((req, index) => {
+                                    const isSelected = req.id === originalRequest.id;
+                                    console.log(`  ${index + 1}. Request ${req.id}: approved=${req.approvedAt}, created=${req.createdAt}, threadId=${req.slackThreadId} ${isSelected ? '← SELECTED (most recent)' : ''}`);
+                                });
+                            } else {
+                                console.log(`Debug - Found single matching request: ${originalRequest.id}`);
+                            }
+                        }
 
-                        if (originalRequest && originalRequest.slackMessageTs) {
+                        if (originalRequest) {
+                            // If no thread ID, try to generate one
+                            if (!originalRequest.slackThreadId && originalRequest.slackMessageTs) {
+                                console.log('Request found but missing thread ID, generating one...');
+                                const threadId = `req_${originalRequest.id}`;
+                                
+                                // Update the request with thread ID
+                                await storage.updateRequest(originalRequest.id, {
+                                    slackThreadId: threadId
+                                });
+                                
+                                originalRequest.slackThreadId = threadId;
+                                console.log(`Generated thread ID: ${threadId} for request: ${originalRequest.id}`);
+                            }
+
                             console.log(
-                                "Sending device return message with thread_ts:",
+                                "Sending device return message with thread ID:",
+                                originalRequest.slackThreadId,
+                                "and thread_ts:",
                                 originalRequest.slackMessageTs
                             );
                             await sendSlackMessage({

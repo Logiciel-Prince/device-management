@@ -61,7 +61,8 @@ export const requests = pgTable("requests", {
   approvedAt: timestamp("approved_at"),
   rejectionReason: text("rejection_reason"),
   assignedDeviceId: varchar("assigned_device_id").references(() => devices.id),
-  slackMessageTs: varchar("slack_message_ts"), // Slack message timestamp for threading
+  slackThreadId: varchar("slack_thread_id"), // Unique thread ID for Slack message threading
+  slackMessageTs: varchar("slack_message_ts"), // Keep for backward compatibility during migration
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 });
@@ -138,7 +139,8 @@ export type User = typeof users.$inferSelect;
 export type Device = typeof devices.$inferSelect;
 export type InsertDevice = z.infer<typeof insertDeviceSchema>;
 export type Request = typeof requests.$inferSelect & {
-  slackMessageTs?: string; // Slack message timestamp for threading
+  slackThreadId?: string; // Unique thread ID for Slack message threading
+  slackMessageTs?: string; // Keep for backward compatibility during migration
 };
 export type InsertRequest = z.infer<typeof insertRequestSchema>;
 export type DeviceLog = typeof deviceLogs.$inferSelect;
